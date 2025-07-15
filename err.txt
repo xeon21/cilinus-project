@@ -1,0 +1,20 @@
+Error: updateSceneResolution is not a function
+
+Call Stack
+18
+
+Show 11 ignore-listed frame(s)
+onChange
+.next\static\chunks\src_1f6286f8._.js (272:48)
+select
+<anonymous> (0:0)
+SceneEditor
+.next\static\chunks\src_1f6286f8._.js (270:231)
+SortableSceneItem
+.next\static\chunks\src_1f6286f8._.js (1834:215)
+<unknown>
+.next\static\chunks\src_1f6286f8._.js (2341:273)
+Array.map
+<anonymous> (0:0)
+EdgeEditorPage
+.next\static\chunks\src_1f6286f8._.js (2341:58)

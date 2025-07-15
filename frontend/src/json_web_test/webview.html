@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=158">
+    <title>WebView Display</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1920px;
+            height: 158px;
+            position: relative;
+            overflow: hidden;
+            background-color: black;
+            font-family: Arial, sans-serif;
+        }
+        #container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        .region {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+        .region img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        #file-input {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        #scene-info {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="file-input">
+        <label for="jsonFile">JSON 파일 선택: </label>
+        <input type="file" id="jsonFile" accept=".json">
+        <button id="loadSample">샘플 데이터 로드</button>
+    </div>
+    <div id="scene-info"></div>
+    <div id="container"></div>
+
+    <script>
+        let currentSceneIndex = 0;
+        let scenes = [];
+        let sceneInterval = null;
+
+        // JSON 파일 읽기 및 렌더링
+        document.getElementById('jsonFile').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const jsonData = JSON.parse(e.target.result);
+                        processScenes(jsonData);
+                    } catch (error) {
+                        alert('JSON 파일 파싱 오류: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // 샘플 데이터 로드 버튼
+        document.getElementById('loadSample').addEventListener('click', function() {
+            const sampleData = {
+                "scenes": [{
+                    "id": "0cebb0ac-87cb-4d89-a113-d024986f89cd",
+                    "name": "기본 씬",
+                    "regions": [{
+                        "id": "bd35c0a5-deea-425d-a07e-3d11cb063af9",
+                        "size": 100,
+                        "content": {
+                            "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+                            "type": "image"
+                        }
+                    }],
+                    "resolutionId": 1,
+                    "transitionTime": 5
+                }]
+            };
+            processScenes(sampleData);
+        });
+
+        function processScenes(data) {
+            if (!data.scenes || !Array.isArray(data.scenes)) {
+                alert('잘못된 JSON 형식입니다. scenes 배열이 필요합니다.');
+                return;
+            }
+
+            scenes = data.scenes;
+            currentSceneIndex = 0;
+            
+            // 기존 인터벌 제거
+            if (sceneInterval) {
+                clearInterval(sceneInterval);
+            }
+
+            // 첫 번째 씬 표시
+            renderScene(scenes[currentSceneIndex]);
+
+            // 씬이 여러 개인 경우 자동 전환 설정
+            if (scenes.length > 1) {
+                sceneInterval = setInterval(() => {
+                    currentSceneIndex = (currentSceneIndex + 1) % scenes.length;
+                    renderScene(scenes[currentSceneIndex]);
+                }, (scenes[currentSceneIndex].transitionTime || 5) * 1000);
+            }
+        }
+
+        function renderScene(scene) {
+            const container = document.getElementById('container');
+            container.innerHTML = ''; // 기존 내용 초기화
+
+            // 씬 정보 표시
+            const sceneInfo = document.getElementById('scene-info');
+            sceneInfo.innerHTML = `
+                <strong>씬 이름:</strong> ${scene.name || 'Unknown'}<br>
+                <strong>씬 ID:</strong> ${scene.id || 'Unknown'}<br>
+                <strong>전환 시간:</strong> ${scene.transitionTime || 5}초<br>
+                <strong>해상도 ID:</strong> ${scene.resolutionId || 'Unknown'}
+            `;
+
+            if (!scene.regions || !Array.isArray(scene.regions)) {
+                console.warn('씬에 regions가 없습니다.');
+                return;
+            }
+
+            // 전체 너비 계산
+            const totalSize = scene.regions.reduce((sum, region) => sum + (region.size || 0), 0);
+            let currentLeft = 0;
+
+            // 각 region 렌더링
+            scene.regions.forEach((region, index) => {
+                const regionDiv = document.createElement('div');
+                regionDiv.className = 'region';
+                
+                // region 크기 계산 (백분율 기반)
+                const widthPercent = (region.size / totalSize) * 100;
+                regionDiv.style.width = widthPercent + '%';
+                regionDiv.style.left = currentLeft + '%';
+                
+                // content 처리
+                if (region.content) {
+                    if (region.content.type === 'image' && region.content.src) {
+                        const img = document.createElement('img');
+                        img.src = region.content.src;
+                        img.alt = `Region ${index + 1}`;
+                        regionDiv.appendChild(img);
+                    } else if (region.content.type === 'text') {
+                        regionDiv.innerHTML = `<div style="color: white; padding: 20px;">${region.content.text || ''}</div>`;
+                    } else if (region.content.type === 'barcode' && region.content.data) {
+                        const canvas = document.createElement('canvas');
+                        regionDiv.appendChild(canvas);
+                        regionDiv.style.backgroundColor = 'white';
+                        regionDiv.style.display = 'flex';
+                        regionDiv.style.alignItems = 'center';
+                        regionDiv.style.justifyContent = 'center';
+                        
+                        // JsBarcode 라이브러리가 있는 경우에만 실행
+                        if (typeof JsBarcode !== 'undefined') {
+                            JsBarcode(canvas, region.content.data, {
+                                format: "CODE128",
+                                width: 2,
+                                height: 100,
+                                displayValue: true,
+                                fontSize: 16,
+                                margin: 10
+                            });
+                        }
+                    }
+                }
+                
+                container.appendChild(regionDiv);
+                currentLeft += widthPercent;
+            });
+        }
+
+        // JsBarcode 라이브러리 동적 로드
+        function loadJsBarcodeLibrary() {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js';
+            document.head.appendChild(script);
+        }
+
+        // 페이지 로드 시 JsBarcode 라이브러리 로드
+        window.addEventListener('load', function() {
+            loadJsBarcodeLibrary();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+{
+  "items": [
+    {
+      "type": "image",
+      "zIndex": 1,
+      "src": "./1.png",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 158
+    },
+    {
+      "type": "image",
+      "zIndex": 3,
+      "src": "./testIcon.png",
+      "x": 50,
+      "y": 40,
+      "width": 80,
+      "height": 80
+    },
+    {
+      "type": "text",
+      "zIndex": 4,
+      "content": "테스트 상품",
+      "x": 150,
+      "y": 30,
+      "fontSize": 32,
+      "color": "#ffffff"
+    },
+    {
+      "type": "text",
+      "zIndex": 5,
+      "content": "모델명: TEST-001",
+      "x": 150,
+      "y": 70,
+      "fontSize": 20,
+      "color": "#00ff00"
+    },
+    {
+      "type": "text",
+      "zIndex": 6,
+      "content": "가격: 50,000원",
+      "x": 150,
+      "y": 100,
+      "fontSize": 24,
+      "color": "#00ff00"
+    },
+    {
+      "type": "text",
+      "zIndex": 7,
+      "content": "재고: 30",
+      "x": 400,
+      "y": 100,
+      "fontSize": 20,
+      "color": "#00ffff"
+    },
+    {
+      "type": "barcode",
+      "zIndex": 10,
+      "data": "8801116039005",
+      "x": 1500,
+      "y": 50,
+      "width": 150,
+      "height": 30
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+@server = http://3.38.103.46:3001
+
+### 게스트 로그인인
+GET {{server}}/Login/guestLogin/1345667
+
+### 유저 정보 가져오기 
+GET {{server}}/UserInfo/getUserInfo/9
+
+
+### 내 나무 정보 가져오기기 
+GET {{server}}/UserInfo/getMyTreeInfo/9
+
+### 나무 심기 
+PUT {{server}}/Game/finalPlantTree/9
+Content-Type: application/json
+
+{
+ "treeIndex": 1,
+ "LocationMapX": "0016110",
+ "LocationMapY": "0120130",
+ "plantMapX": "1",
+ "plantMapY": "1"
+}

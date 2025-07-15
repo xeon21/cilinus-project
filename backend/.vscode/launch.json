@@ -1,0 +1,21 @@
+// .vscode/launch.json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node", // 최신 Node.js 디버거
+      "request": "attach", // 실행 중인 프로세스에 연결
+      "name": "Attach to NestJS", // 디버그 구성 이름
+      "port": 9229, // NestJS가 --debug 플래그로 실행될 때 사용하는 디버그 포트
+      "restart": true, // 서버 재시작 시 자동 재연결
+      "sourceMaps": true, // TypeScript 소스맵 사용
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js" // 컴파일된 JS 파일 경로
+      ],
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    }
+   
+  ]
+}

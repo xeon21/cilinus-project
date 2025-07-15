@@ -1,0 +1,70 @@
+@server = http://127.0.0.1:3001
+
+
+### 게스트 로그인인
+GET {{server}}/Login/guestLogin/1345667
+
+### 유저 정보 가져오기 
+GET {{server}}/UserInfo/getUserInfo/9
+
+
+### 내 나무 정보 가져오기기 
+GET {{server}}/UserInfo/getMyTreeInfo/9
+
+### 나무 심기 
+PUT {{server}}/Game/finalPlantTree/9
+Content-Type: application/json
+
+{
+ "treeIndex": 1,
+ "LocationMapX": "0016110",
+ "LocationMapY": "0120130",
+ "plantMapX": "1",
+ "plantMapY": "1"
+}
+
+### 나무 심기 
+PUT {{server}}/Game/finalPlantTree/9
+Content-Type: application/json
+
+{
+ "treeIndex": 1,
+ "LocationMapX": "0016110",
+ "LocationMapY": "0120130",
+ "plantMapX": "1",
+ "plantMapY": "1"
+}
+
+### 특정 게시글 조회
+GET {{server}}/blog/67efa0202ad4a94be18857ec
+
+### 게시글 삭제
+DELETE {{server}}/blog/67efba78d58a1f1f2e201014
+
+### 게시글 전체 삭제
+DELETE {{server}}/blog
+
+### 게시글 수정
+PUT {{server}}/blog/67efa3af09c0091141b8cc9b
+Content-Type: application/json
+
+{
+"title": "타이틀 수정1",
+"content": "본문수정1",
+"name": "neosdh"
+}
+
+
+
+# 게시글 조회
+GET {{server}}/login
+
+### 게시글 생성
+POST {{server}}/blog
+Content-Type: application/json
+
+{
+"title": "안녕하세요",
+"content": "ENG",
+"name": "이름 3"
+}

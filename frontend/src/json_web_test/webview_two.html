@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=158">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Digital Signage Display - 1920x158</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 1920px;
+            height: 158px;
+            position: relative;
+            overflow: hidden;
+            background-color: black;
+            font-family: Arial, sans-serif;
+        }
+        #container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        .item {
+            position: absolute;
+        }
+        .text-item {
+            white-space: nowrap;
+        }
+        .barcode-container {
+            background-color: white;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* 디버그 모드용 상태 표시 */
+        #debug-info {
+            position: fixed;
+            top: 0;
+            left: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px;
+            font-size: 10px;
+            z-index: 9999;
+            display: none;
+        }
+        /* 개발 환경용 컨트롤 */
+        #dev-controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            z-index: 9999;
+            display: none;
+        }
+        #dev-controls button {
+            margin: 0 5px;
+            padding: 5px 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        #dev-controls button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div id="debug-info"></div>
+    <div id="dev-controls">
+        <input type="file" id="jsonFile" accept=".json" style="display:none;">
+        <button onclick="document.getElementById('jsonFile').click()">JSON 파일 선택</button>
+        <button onclick="reloadJson()">새로고침</button>
+        <label>
+            <input type="checkbox" id="autoReload"> 자동 새로고침
+        </label>
+    </div>
+    <div id="container"></div>
+
+    <script>
+        // 환경 감지
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isLocalFile = window.location.protocol === 'file:';
+        const isLocalServer = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const isDevelopment = isLocalFile || isLocalServer;
+
+        // 설정
+        const CONFIG = {
+            JSON_FILE_PATH: './data.json',
+            CHECK_INTERVAL: 5000, // 5초
+            DEBUG_MODE: isDevelopment,
+            RETRY_ATTEMPTS: 3,
+            RETRY_DELAY: 1000,
+            USE_FILE_API: isDevelopment && !isAndroid // 개발 환경에서만 File API 사용
+        };
+
+        let lastModified = null;
+        let lastJsonContent = null;
+        let checkInterval = null;
+        let selectedFile = null;
+
+        // 디버그 로그
+        function debugLog(message) {
+            if (CONFIG.DEBUG_MODE) {
+                const debugDiv = document.getElementById('debug-info');
+                debugDiv.style.display = 'block';
+                debugDiv.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                console.log(message);
+            }
+        }
+
+        // 개발 환경 UI 표시
+        if (isDevelopment) {
+            document.getElementById('dev-controls').style.display = 'block';
+            debugLog(`Development mode - ${isAndroid ? 'Android' : 'Desktop'}`);
+        }
+
+        // File API를 사용한 파일 선택 (윈도우 크롬)
+        document.getElementById('jsonFile').addEventListener('change', function(event) {
+            selectedFile = event.target.files[0];
+            if (selectedFile) {
+                debugLog(`File selected: ${selectedFile.name}`);
+                readSelectedFile();
+            }
+        });
+
+        // 자동 새로고침 토글
+        document.getElementById('autoReload').addEventListener('change', function(event) {
+            if (event.target.checked) {
+                if (!selectedFile && isDevelopment) {
+                    alert('먼저 JSON 파일을 선택하거나 로컬 서버를 실행하세요.');
+                    event.target.checked = false;
+                    return;
+                }
+                startAutoReload();
+            } else {
+                stopAutoReload();
+            }
+        });
+
+        // 선택된 파일 읽기
+        function readSelectedFile() {
+            if (!selectedFile) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const jsonData = JSON.parse(e.target.result);
+                    const newContent = e.target.result;
+                    
+                    if (lastJsonContent !== newContent) {
+                        lastJsonContent = newContent;
+                        renderItems(jsonData);
+                        debugLog('File content updated');
+                    }
+                } catch (error) {
+                    debugLog(`JSON parse error: ${error.message}`);
+                }
+            };
+            reader.readAsText(selectedFile);
+        }
+
+        // 파일 다시 읽기 (자동 새로고침용)
+        function reReadSelectedFile() {
+            if (!selectedFile) return;
+            
+            // 파일을 다시 선택하도록 유도
+            const fileInput = document.getElementById('jsonFile');
+            
+            // 파일 입력을 리셋하고 다시 트리거
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(selectedFile);
+            fileInput.files = dataTransfer.files;
+            
+            // 직접 파일을 다시 읽기
+            readSelectedFile();
+            
+            debugLog('Re-reading file for changes...');
+        }
+
+        // HTTP/HTTPS를 통한 JSON 로드
+        async function loadJsonViaHttp() {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                const timestamp = new Date().getTime();
+                
+                xhr.open('GET', `${CONFIG.JSON_FILE_PATH}?t=${timestamp}`, true);
+                xhr.overrideMimeType('application/json');
+                
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            try {
+                                const jsonData = JSON.parse(xhr.responseText);
+                                resolve({
+                                    data: jsonData,
+                                    content: xhr.responseText
+                                });
+                            } catch (error) {
+                                reject(error);
+                            }
+                        } else if (xhr.status === 0 && isLocalFile) {
+                            // 로컬 파일 시스템 접근 시도
+                            reject(new Error('CORS blocked - use local server or file selection'));
+                        } else {
+                            reject(new Error(`HTTP ${xhr.status}`));
+                        }
+                    }
+                };
+                
+                xhr.onerror = function() {
+                    reject(new Error('Network error'));
+                };
+                
+                xhr.send();
+            });
+        }
+
+        // 안드로이드 WebView용 파일 로드
+        async function loadJsonForAndroid() {
+            try {
+                // 안드로이드 assets 폴더 접근
+                const response = await fetch(`file:///android_asset/sample-data2.json?t=${Date.now()}`);
+                if (!response.ok) throw new Error('Android asset not found');
+                
+                const jsonData = await response.json();
+                return {
+                    data: jsonData,
+                    content: JSON.stringify(jsonData)
+                };
+            } catch (error) {
+                // 일반 경로 시도
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', CONFIG.JSON_FILE_PATH, false);
+                xhr.send();
+                
+                if (xhr.status === 200 || xhr.status === 0) {
+                    return {
+                        data: JSON.parse(xhr.responseText),
+                        content: xhr.responseText
+                    };
+                }
+                throw error;
+            }
+        }
+
+        // 통합 JSON 로드 함수
+        async function loadJson() {
+            // 개발 환경에서 파일이 선택된 경우
+            if (CONFIG.USE_FILE_API && selectedFile) {
+                return new Promise((resolve) => {
+                    readSelectedFile();
+                    resolve(); // 파일 읽기는 비동기로 처리됨
+                });
+            }
+
+            // 안드로이드 환경
+            if (isAndroid && isLocalFile) {
+                return await loadJsonForAndroid();
+            }
+
+            // 일반 HTTP 환경 (로컬 서버 또는 프로덕션)
+            return await loadJsonViaHttp();
+        }
+
+        // JSON 로드 및 렌더링
+        async function loadAndRender() {
+            try {
+                if (CONFIG.USE_FILE_API && selectedFile) {
+                    readSelectedFile();
+                    return;
+                }
+
+                const result = await loadJson();
+                if (result && lastJsonContent !== result.content) {
+                    lastJsonContent = result.content;
+                    renderItems(result.data);
+                    debugLog('Content updated via HTTP/File');
+                }
+            } catch (error) {
+                debugLog(`Load error: ${error.message}`);
+                
+                // 개발 환경에서 로드 실패 시 안내
+                if (isDevelopment && !selectedFile) {
+                    showInstructions();
+                }
+            }
+        }
+
+        // 사용 안내 표시
+        function showInstructions() {
+            const instructions = {
+                "items": [
+                    {
+                        "type": "text",
+                        "zIndex": 1,
+                        "content": isDevelopment ? "개발 모드" : "사이니지 모드",
+                        "x": 800,
+                        "y": 30,
+                        "fontSize": 28,
+                        "color": "#00ff00"
+                    },
+                    {
+                        "type": "text",
+                        "zIndex": 2,
+                        "content": "1. 로컬 서버 실행: python -m http.server 8000",
+                        "x": 600,
+                        "y": 70,
+                        "fontSize": 20,
+                        "color": "#ffffff"
+                    },
+                    {
+                        "type": "text",
+                        "zIndex": 3,
+                        "content": "2. 또는 우측 상단에서 JSON 파일 선택",
+                        "x": 600,
+                        "y": 100,
+                        "fontSize": 20,
+                        "color": "#ffffff"
+                    }
+                ]
+            };
+            renderItems(instructions);
+        }
+
+        // 렌더링 함수
+        function renderItems(data) {
+            const container = document.getElementById('container');
+            container.innerHTML = '';
+
+            if (!data.items || !Array.isArray(data.items)) {
+                debugLog('Invalid data format');
+                return;
+            }
+
+            const sortedItems = [...data.items].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+
+            sortedItems.forEach((item, index) => {
+                const element = document.createElement('div');
+                element.className = 'item';
+                element.style.zIndex = item.zIndex || index;
+
+                if (item.type === 'image') {
+                    const img = document.createElement('img');
+                    img.src = item.src;
+                    img.style.width = item.width + 'px';
+                    img.style.height = item.height + 'px';
+                    img.onerror = () => debugLog(`Image load failed: ${item.src}`);
+                    element.appendChild(img);
+                    element.style.left = (item.x || 0) + 'px';
+                    element.style.top = (item.y || 0) + 'px';
+                } 
+                else if (item.type === 'text') {
+                    element.className += ' text-item';
+                    element.textContent = item.content || '';
+                    element.style.fontSize = (item.fontSize || 16) + 'px';
+                    element.style.color = item.color || '#ffffff';
+                    element.style.left = (item.x || 0) + 'px';
+                    element.style.top = (item.y || 0) + 'px';
+                }
+                else if (item.type === 'barcode') {
+                    const canvas = document.createElement('canvas');
+                    element.className += ' barcode-container';
+                    element.appendChild(canvas);
+                    element.style.left = (item.x || 0) + 'px';
+                    element.style.top = (item.y || 0) + 'px';
+                    
+                    // JSON에서 지정한 width가 있으면 적용
+                    if (item.width) {
+                        element.style.width = item.width + 'px';
+                    } else {
+                        element.style.width = 'auto';
+                    }
+                    element.style.height = 'auto';
+                    
+                    if (typeof JsBarcode !== 'undefined') {
+                        try {
+                            // 바코드 바의 너비: 더 작게 조정
+                            const barcodeWidth = 1; // 바코드 막대 하나의 너비
+                            const barcodeHeight = item.height || 40;
+                            const fontSize = Math.max(8, Math.min(12, barcodeHeight / 4));
+                            
+                            JsBarcode(canvas, item.data || '', {
+                                format: "CODE128",
+                                width: barcodeWidth,
+                                height: barcodeHeight,
+                                displayValue: true,
+                                fontSize: fontSize,
+                                margin: 2,
+                                textMargin: 0,
+                                marginTop: 2,
+                                marginBottom: 2,
+                                marginLeft: 5,
+                                marginRight: 5
+                            });
+                            
+                            // canvas 크기를 지정된 width로 제한
+                            if (item.width && canvas.width > item.width) {
+                                const scale = item.width / canvas.width;
+                                canvas.style.width = item.width + 'px';
+                                canvas.style.height = (canvas.height * scale) + 'px';
+                            }
+                        } catch (error) {
+                            debugLog(`Barcode error: ${error.message}`);
+                        }
+                    }
+                }
+
+                container.appendChild(element);
+            });
+
+            debugLog(`Rendered ${sortedItems.length} items`);
+        }
+
+        // 새로고침
+        function reloadJson() {
+            debugLog('Manual reload triggered');
+            loadAndRender();
+        }
+
+        // 자동 새로고침 시작
+        function startAutoReload() {
+            stopAutoReload();
+            checkInterval = setInterval(loadAndRender, CONFIG.CHECK_INTERVAL);
+            debugLog('Auto-reload started');
+        }
+
+        // 자동 새로고침 중지
+        function stopAutoReload() {
+            if (checkInterval) {
+                clearInterval(checkInterval);
+                checkInterval = null;
+                debugLog('Auto-reload stopped');
+            }
+        }
+
+        // JsBarcode 라이브러리 로드
+        function loadJsBarcodeLibrary() {
+            return new Promise((resolve) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js';
+                script.onload = () => {
+                    debugLog('JsBarcode loaded');
+                    resolve();
+                };
+                script.onerror = () => {
+                    debugLog('JsBarcode failed to load');
+                    resolve(); // 계속 진행
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        // 초기화
+        async function initialize() {
+            debugLog(`Initializing... Environment: ${isAndroid ? 'Android' : 'Desktop'}, Local: ${isLocalFile}`);
+            
+            await loadJsBarcodeLibrary();
+            await loadAndRender();
+            
+            // 프로덕션 환경에서는 자동 새로고침 시작
+            if (!isDevelopment || isAndroid) {
+                startAutoReload();
+            }
+        }
+
+        // 페이지 로드 시 실행
+        window.addEventListener('load', initialize);
+
+        // 페이지 언로드 시 정리
+        window.addEventListener('unload', () => {
+            stopAutoReload();
+        });
+
+        // 드래그 앤 드롭 지원 (개발 환경)
+        if (isDevelopment) {
+            document.body.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+
+            document.body.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0 && files[0].type === 'application/json') {
+                    selectedFile = files[0];
+                    debugLog(`File dropped: ${selectedFile.name}`);
+                    readSelectedFile();
+                }
+            });
+        }
+    </script>
+</body>
+</html>

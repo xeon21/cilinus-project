@@ -1,0 +1,11 @@
+{
+  "name": "signage-display",
+  "version": "1.0.0",
+  "description": "Digital Signage Display WebView",
+  "scripts": {
+    "start": "npx http-server -p 8000 -c-1",
+    "serve": "npx serve -p 8000"
+  },
+  "keywords": ["signage", "display", "webview"],
+  "license": "MIT"
+}
