@@ -33,7 +33,7 @@ export default function TagStatusPage() {
         setLoading(true);
         const response = await axiosInstance.get('/tag-status');
         setData(response.data);
-      } catch (err) {
+      } catch {
         setError('데이터를 불러오는 데 실패했습니다.');
       } finally {
         setLoading(false);

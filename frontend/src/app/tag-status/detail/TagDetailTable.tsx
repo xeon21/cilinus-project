@@ -118,6 +118,7 @@ const EmptyTableMessage = styled.div`
 
 // --- [추가/수정] 타입 및 Props 인터페이스 ---
 export interface TagDetailData {
+    [key: string]: string | number;
     id: string;
     prCode: string;
     tagType: string;
