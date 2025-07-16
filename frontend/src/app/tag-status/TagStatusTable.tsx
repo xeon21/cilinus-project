@@ -119,6 +119,7 @@ const FilterButton = styled.button<{ $reset?: boolean }>`
 
 // --- [수정] 타입 및 Props 인터페이스 확장 ---
 export interface TagStatusData {
+  [key: string]: string | number;
   companyName: string;
   companyCode: string;
   storeName: string;

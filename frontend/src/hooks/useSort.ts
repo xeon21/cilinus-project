@@ -14,7 +14,7 @@ export interface SortConfig<T> {
  * @param data - 정렬할 데이터 배열
  * @returns 정렬된 데이터와 정렬 관련 함수들
  */
-export function useSort<T extends Record<string, any>>(data: T[]) {
+export function useSort<T extends Record<string, unknown>>(data: T[]) {
   const [sortConfig, setSortConfig] = useState<SortConfig<T> | null>(null);
 
   // 정렬된 데이터 계산

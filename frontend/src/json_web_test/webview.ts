@@ -13,8 +13,12 @@ interface Item {
   color?: string;
 }
 
+interface ParsedData {
+  items: Item[];
+}
+
 export class WebViewRenderer {
-  parseJsonData(jsonString: string): any {
+  parseJsonData(jsonString: string): ParsedData {
     return JSON.parse(jsonString);
   }
 

@@ -1,5 +1,5 @@
 // frontend/src/store/dynamicEditorStore.test.ts
-import { useEditorStore, Layer } from './dynamicEditorStore';
+import { useEditorStore } from './dynamicEditorStore';
 import { act } from '@testing-library/react';
 
 describe('dynamicEditorStore', () => {

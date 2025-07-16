@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import styled from 'styled-components';
 
 // --- Styled Components (기존과 유사, 일부 수정) ---

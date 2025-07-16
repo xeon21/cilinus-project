@@ -147,7 +147,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
                       height: '100%',
                       objectFit: 'fill',
                       zIndex: 0,
-                    }
+                    } as React.CSSProperties
                   : { // 오버레이 스타일
                       position: 'absolute',
                       top: '10%',
@@ -156,7 +156,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
                       height: 'auto',
                       ...layerData.style,
                       zIndex: (r.layers.reduce((max, l) => Math.max((l.style.zIndex as number) || 0, max), 0) + 1),
-                    }
+                    } as React.CSSProperties
               };
               return { ...r, layers: [...r.layers, newLayer] };
             }
@@ -222,7 +222,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
                   height: '100%',
                   objectFit: 'fill',
                   zIndex: 0,
-                }
+                } as React.CSSProperties
               };
             }
             // If other layers were background, unset them
