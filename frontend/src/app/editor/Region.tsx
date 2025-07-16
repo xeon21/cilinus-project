@@ -25,7 +25,7 @@ const Zone = styled.div<{
     props.$isSelected ? '#e67e22' :
     '#bdc3c7'};
 
-  padding: 0.5rem;
+  padding: 0.6rem;
   box-sizing: border-box;
   background-color: ${props => props.$isDragOver ? '#e8f8f5' : (props.$isDropTarget ? '#eaf5ff' : '#f8f9fa')};
   display: flex;
@@ -46,8 +46,8 @@ const Zone = styled.div<{
     position: absolute;
     top: 5px;
     left: 5px;
-    width: 20px;
-    height: 20px;
+    width: 23px;
+    height: 23px;
     background-color: rgba(0,0,0,0.5);
     border-radius: 50%;
     cursor: grab;

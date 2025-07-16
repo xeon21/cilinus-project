@@ -26,8 +26,8 @@ import { Region } from './Region';
 
 const SceneWrapper = styled.div`
   width: 100%;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  padding: 1.3rem;
+  margin-bottom: 1.3rem;
   border: 1px solid #ccc;
   border-radius: 8px;
   background-color: #fff;
@@ -37,8 +37,8 @@ const SceneWrapper = styled.div`
 const ControlBar = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.8rem;
-  margin-bottom: 0.8rem;
+  gap: 1rem;
+  margin-bottom: 1rem;
   flex-wrap: wrap;
 `;
 
@@ -51,7 +51,7 @@ const SceneHeader = styled.h2`
 const ControlGroup = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
   background-color: #f8f9fa;
   padding: 0.3rem 0.5rem;
   border-radius: 4px;
@@ -62,7 +62,7 @@ const StyledInput = styled.input`
   padding: 0.3rem;
   border: 1px solid #ccc;
   border-radius: 4px;
-  width: 50px;
+  width: 58px;
   font-size: 0.8rem;
 `;
 
@@ -90,15 +90,15 @@ const StyledButton = styled.button<{ $secondary?: boolean }>`
 
 const CanvasWrapper = styled.div<{ $width: number; $height: number }>`
   width: 100%;
-  max-width: 1200px;
-  margin: 1rem auto 0 auto;
+  max-width: 1650px;
+  margin: 1.3rem auto 0 auto;
   border: 1px solid #d1d5db;
   aspect-ratio: ${props => `${props.$width} / ${props.$height}`};
   display: flex;
 `;
 
 const ResizeHandle = styled(PanelResizeHandle)`
-  width: 8px;
+  width: 11px;
   background-clip: padding-box;
   background-color: #e0e0e0;
   transition: background-color 0.2s;

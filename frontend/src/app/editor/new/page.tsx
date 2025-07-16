@@ -29,15 +29,15 @@ import {
 import DashboardLayout from '../../components/layout/DashboardLayout';
 
 const PageWrapper = styled.div`
-  padding: 1rem;
+  padding: 1.3rem;
   background-color:rgb(220, 225, 233);
   min-height: 100vh;
 `;
 
 const Header = styled.header`
-  max-width: 1280px;
-  margin: 0 auto 1.5rem auto;
-  padding: 0.8rem 1rem;
+  max-width: 1770px;
+  margin: 0 auto 2rem auto;
+  padding: 1.1rem 1.3rem;
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
@@ -59,7 +59,7 @@ const ProjectNameInput = styled.input`
 
 const ControlsWrapper = styled.div`
   display: flex;
-  gap: 0.5rem;
+  gap: 0.6rem;
   align-items: center;
 `;
 
@@ -85,7 +85,7 @@ const ControlButton = styled.button<{ $primary?: boolean; $secondary?: boolean; 
 `;
 
 const EditorLayout = styled.div`
-  max-width: 1280px;
+  max-width: 1770px;
   margin: 0 auto;
 `;
 
@@ -96,8 +96,8 @@ const MainColumn = styled.div`
 const AddSceneButton = styled.button`
     display: block;
     width: 100%;
-    margin-top: 1rem;
-    padding: 0.7rem;
+    margin-top: 1.3rem;
+    padding: 0.8rem;
     font-size: 0.9rem;
     font-weight: bold;
     color: #3498db;

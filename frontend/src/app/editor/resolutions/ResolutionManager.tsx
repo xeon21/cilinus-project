@@ -11,25 +11,25 @@ import axiosInstance from '@/lib/axios';
 const ManagerWrapper = styled.div`
   display: grid;
   grid-template-columns: 1fr 1.5fr 1fr; // 1:2 비율로 칼럼을 나눕니다.
-  gap: 6rem;
+  gap: 7rem;
   align-items: start; // 카드 높이가 달라도 위쪽을 기준으로 정렬
 `;
 
 const Card = styled.div`
   background-color: #2c3e50;
-  padding: 1.5rem;
+  padding: 1.7rem;
   border-radius: 12px;
 `;
 
 const Title = styled.h3`
-  margin: 0 0 1.5rem 0;
+  margin: 0 0 1.7rem 0;
   color: #ecf0f1;
   border-bottom: 1px solid #34495e;
-  padding-bottom: 1rem;
+  padding-bottom: 1.15rem;
 `;
 
 const InputGroup = styled.div`
-  margin-bottom: 1rem;
+  margin-bottom: 1.15rem;
   label {
     display: block;
     margin-bottom: 0.5rem;
@@ -56,7 +56,7 @@ const SubmitButton = styled.button`
   border-radius: 4px;
   font-weight: bold;
   cursor: pointer;
-  margin-top: 1rem;
+  margin-top: 1.15rem;
 
   &:hover { background-color: #229954; }
 `;
@@ -71,7 +71,7 @@ const ResolutionItem = styled.li`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.8rem;
+  padding: 0.9rem;
    color: #ecf0f1; /* [핵심 수정] 텍스트 색상을 밝게 변경 */
   font-weight: 500; /* [추가] 폰트 두께 */
   border-bottom: 1px solid #34495e;
