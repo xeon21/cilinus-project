@@ -28,7 +28,7 @@ export default function ResourceStatusPage() {
         const fetchData = async () => {
             try {
                 // [수정] 백엔드 API 호출
-                const response = await fetch('http://172.16.83.8:3002/resource/history');
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/resource/history`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch resource history');
                 }
