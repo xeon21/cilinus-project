@@ -29,7 +29,9 @@ export const useAuthStore = create(
 
       login: async (loginData: any) => {
         try {
-          const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, loginData);
+          const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/auth/login`;
+          console.log(`Attempting to login to: ${apiUrl}`);
+          const response = await axios.post(apiUrl, loginData);
           const { accessToken } = response.data;
 
           const base64Url = accessToken.split('.')[1];
