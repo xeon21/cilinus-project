@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>차세대 LCD ESL 데이터베이스 ERD</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        .legend {
+            background-color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        .legend h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .legend-item {
+            display: inline-block;
+            margin-right: 20px;
+            margin-bottom: 5px;
+        }
+        .mermaid {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .table-info {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .table-info h3 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        .relationships {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .relationship-card {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        .relationship-card h4 {
+            margin-top: 0;
+            color: #2980b9;
+        }
+        code {
+            background-color: #f1f1f1;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>차세대 LCD ESL 데이터베이스 ERD</h1>
+        <p class="subtitle">Electronic Shelf Label Web CMS Database Structure v1.1</p>
+        
+        <div class="legend">
+            <h3>범례</h3>
+            <div class="legend-item">🔑 Primary Key (PK)</div>
+            <div class="legend-item">🔗 Foreign Key (FK)</div>
+            <div class="legend-item">📍 Location Data</div>
+            <div class="legend-item">🎨 Template System</div>
+            <div class="legend-item">📊 Business Logic</div>
+        </div>
+
+        <h2>전체 데이터베이스 구조도</h2>
+        <div class="mermaid">
+erDiagram
+    organizations ||--o{ organizations : "parent-child"
+    organizations ||--o{ users : "has"
+    organizations ||--o{ esl_devices : "owns"
+    organizations ||--o{ products : "manages"
+    organizations ||--o{ device_templates : "creates"
+    organizations ||--o{ tag_templates : "creates"
+    organizations ||--o{ system_logs : "generates"
+    
+    users ||--o{ device_templates : "creates"
+    users ||--o{ tag_templates : "creates"
+    users ||--o{ content_updates : "requests"
+    users ||--o{ system_logs : "performs"
+    
+    device_templates ||--o{ esl_devices : "applies to"
+    esl_devices ||--o{ price_tags : "displays"
+    esl_devices ||--o{ content_updates : "receives"
+    
+    tag_templates ||--o{ price_tags : "styles"
+    products ||--o{ price_tags : "shown on"
+    products ||--o{ content_updates : "updates"
+    
+    price_tags ||--o{ content_updates : "updates"
+    tag_templates ||--o{ content_updates : "changes"
+
+    organizations {
+        int id PK
+        int parent_id FK
+        string name
+        string type
+        int level
+        string path
+        string address
+        string address_detail
+        string postal_code
+        string city
+        string district
+        decimal latitude
+        decimal longitude
+        string phone
+        jsonb business_hours
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    users {
+        int id PK
+        int organization_id FK
+        string email UK
+        string password_hash
+        string full_name
+        string role
+        boolean is_active
+        timestamp last_login
+        timestamp created_at
+    }
+    
+    device_templates {
+        int id PK
+        int organization_id FK
+        string name
+        string device_type
+        string layout_type
+        int max_tags
+        jsonb grid_config
+        string preview_url
+        boolean is_default
+        int created_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    esl_devices {
+        int id PK
+        int organization_id FK
+        int device_template_id FK
+        string mac_address UK
+        string device_type
+        string firmware_version
+        string location_store
+        string location_aisle
+        string location_shelf
+        int battery_level
+        int signal_strength
+        string status
+        timestamp last_heartbeat
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    tag_templates {
+        int id PK
+        int organization_id FK
+        string name
+        string template_type
+        string size_type
+        int min_width
+        int min_height
+        string aspect_ratio
+        jsonb layout_config
+        string preview_url
+        string category
+        boolean is_default
+        int created_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    price_tags {
+        int id PK
+        int device_id FK
+        int product_id FK
+        int tag_template_id FK
+        int grid_position
+        int grid_width
+        int grid_height
+        jsonb custom_position
+        boolean is_active
+        int display_order
+        timestamp last_updated
+        timestamp created_at
+    }
+    
+    products {
+        int id PK
+        int organization_id FK
+        string sku
+        string barcode
+        string name
+        text description
+        string category
+        decimal current_price
+        decimal original_price
+        string currency
+        string unit
+        int stock_level
+        boolean is_promotion
+        timestamp promotion_end_date
+        timestamp created_at
+        timestamp updated_at
+    }
+    
+    content_updates {
+        int id PK
+        int device_id FK
+        int price_tag_id FK
+        int product_id FK
+        int tag_template_id FK
+        string update_type
+        string status
+        int retry_count
+        text error_message
+        int created_by FK
+        timestamp created_at
+        timestamp completed_at
+    }
+    
+    system_logs {
+        int id PK
+        int organization_id FK
+        int user_id FK
+        string action
+        string entity_type
+        int entity_id
+        inet ip_address
+        text user_agent
+        jsonb details
+        timestamp created_at
+    }
+        </div>
+
+        <h2>핵심 테이블 관계 설명</h2>
+        
+        <div class="table-info">
+            <h3>1. 계층적 조직 구조</h3>
+            <p><strong>organizations</strong> 테이블은 자기 참조(self-referencing) 구조로 무제한 계층을 지원합니다.</p>
+            <ul>
+                <li>본사(headquarters) → 지점(branch) → 매장(store) 구조</li>
+                <li>지도 표시를 위한 위치 정보 포함 (latitude, longitude)</li>
+                <li>path 컬럼으로 계층 경로 최적화</li>
+            </ul>
+        </div>
+
+        <div class="table-info">
+            <h3>2. 템플릿 시스템 분리</h3>
+            <p>디바이스 레이아웃과 태그 디자인을 독립적으로 관리하는 이원화된 템플릿 시스템</p>
+            <ul>
+                <li><strong>device_templates</strong>: 화면 분할 레이아웃 (2x2, 1x4 등)</li>
+                <li><strong>tag_templates</strong>: 개별 가격표 디자인</li>
+                <li>유연한 조합으로 다양한 디스플레이 구성 가능</li>
+            </ul>
+        </div>
+
+        <div class="table-info">
+            <h3>3. 디바이스-태그-상품 관계</h3>
+            <p>하나의 디바이스에 여러 태그를 표시하는 구조</p>
+            <ul>
+                <li><strong>esl_devices</strong>: 물리적 디바이스 정보</li>
+                <li><strong>price_tags</strong>: 디바이스 내 개별 태그 (위치, 크기 정보)</li>
+                <li><strong>products</strong>: 태그에 표시될 상품 정보</li>
+            </ul>
+        </div>
+
+        <h2>주요 관계 패턴</h2>
+        
+        <div class="relationships">
+            <div class="relationship-card">
+                <h4>조직 계층 구조</h4>
+                <p><code>organizations.parent_id → organizations.id</code></p>
+                <p>자기 참조를 통한 트리 구조 구현</p>
+            </div>
+            
+            <div class="relationship-card">
+                <h4>디바이스 템플릿 적용</h4>
+                <p><code>esl_devices.device_template_id → device_templates.id</code></p>
+                <p>디바이스의 화면 레이아웃 결정</p>
+            </div>
+            
+            <div class="relationship-card">
+                <h4>태그 스타일링</h4>
+                <p><code>price_tags.tag_template_id → tag_templates.id</code></p>
+                <p>개별 태그의 디자인 템플릿 적용</p>
+            </div>
+            
+            <div class="relationship-card">
+                <h4>상품 표시</h4>
+                <p><code>price_tags.product_id → products.id</code></p>
+                <p>태그에 표시될 상품 정보 연결</p>
+            </div>
+            
+            <div class="relationship-card">
+                <h4>업데이트 추적</h4>
+                <p><code>content_updates → devices/tags/products</code></p>
+                <p>모든 콘텐츠 변경 이력 관리</p>
+            </div>
+            
+            <div class="relationship-card">
+                <h4>권한 관리</h4>
+                <p><code>users.organization_id → organizations.id</code></p>
+                <p>조직 기반 접근 권한 제어</p>
+            </div>
+        </div>
+
+        <h2>인덱스 전략</h2>
+        
+        <div class="table-info">
+            <h3>성능 최적화를 위한 주요 인덱스</h3>
+            <ul>
+                <li><strong>계층 탐색</strong>: <code>idx_organizations_parent</code>, <code>idx_organizations_path</code></li>
+                <li><strong>지도 표시</strong>: <code>idx_organizations_location</code>, <code>idx_organizations_city_district</code></li>
+                <li><strong>디바이스 관리</strong>: <code>idx_devices_org_status</code>, <code>idx_devices_template</code></li>
+                <li><strong>태그 조회</strong>: <code>idx_price_tags_device</code>, <code>idx_price_tags_product</code></li>
+                <li><strong>상품 검색</strong>: <code>idx_products_org_sku</code>, <code>idx_products_category</code></li>
+            </ul>
+        </div>
+
+        <h2>데이터 무결성 규칙</h2>
+        
+        <div class="table-info">
+            <h3>주요 제약 조건</h3>
+            <ul>
+                <li><strong>Cascade Delete</strong>: 디바이스 삭제 시 관련 태그 자동 삭제</li>
+                <li><strong>Set Null</strong>: 상품 삭제 시 태그의 product_id를 NULL로 설정</li>
+                <li><strong>Unique Constraints</strong>: 
+                    <ul>
+                        <li><code>users.email</code> - 이메일 중복 방지</li>
+                        <li><code>esl_devices.mac_address</code> - MAC 주소 유일성</li>
+                        <li><code>(device_id, grid_position)</code> - 디바이스 내 위치 중복 방지</li>
+                        <li><code>(organization_id, sku)</code> - 조직별 SKU 유일성</li>
+                    </ul>
+                </li>
+                <li><strong>Check Constraints</strong>: 템플릿 호환성, 위치 유효성 검증</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            er: {
+                layoutDirection: 'TB',
+                minEntityWidth: 120,
+                minEntityHeight: 60,
+                entityPadding: 15,
+                useMaxWidth: true
+            }
+        });
+    </script>
+</body>
+</html>

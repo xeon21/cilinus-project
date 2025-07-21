@@ -22,12 +22,16 @@ async function bootstrap() {
     .setTitle('ForeFore API') // API 문서의 제목
     .setDescription('ForeFore API description') // API에 대한 설명
     .setVersion('1.0') // API 버전
-    .addTag('Login') // API 그룹 태그 (컨트롤러별로 그룹핑 가능)
-    .addTag('UserInfo')
-    .addTag('Game')
-    .addTag('Project') 
-    .addTag('Canvas Resolutions') // [추가]
-    // .addBearerAuth() // JWT 인증 등을 사용하는 경우 추가 (선택 사항)
+    .addTag('Auth') // 인증 관련 API
+    .addTag('Login') // 로그인 관련 API
+    .addTag('UserInfo') // 사용자 정보 관련 API
+    .addTag('Admin') // 관리자 기능 API
+    .addTag('Game') // 게임 관련 API
+    .addTag('Project') // 프로젝트 관련 API
+    .addTag('Canvas Resolutions') // 캔버스 해상도 관리 API
+    .addTag('Resource') // 리소스 모니터링 API
+    .addTag('Tag Status') // 태그 상태 관리 API
+    .addBearerAuth() // JWT 인증 활성화
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
