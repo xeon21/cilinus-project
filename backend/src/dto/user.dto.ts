@@ -1,4 +1,5 @@
 import { IsNotEmpty, IsIn } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 //유저정보 데이터
 export interface UserData {
@@ -81,6 +82,11 @@ export class UserDto {
 }
 
 export class UpdateUserRoleDto {
+    @ApiProperty({
+        description: 'User role',
+        enum: ['admin', 'viewer'],
+        example: 'viewer'
+    })
     @IsNotEmpty()
     @IsIn(['admin', 'viewer'])
     role: string;

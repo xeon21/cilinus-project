@@ -83,6 +83,12 @@ export class ResponseDto_TreeData {
     })
     treeIndex: number;
 
+    @ApiProperty({
+        example: "고사리",
+        description: '나무 이름',
+    })
+    treeName?: string;
+
      @ApiProperty({
         example: "0000123",
         description: '7단계로 표현되는 메인맵의 X좌표',
@@ -91,7 +97,7 @@ export class ResponseDto_TreeData {
 
      @ApiProperty({
         example: "0000123",
-        description: '7단계로 표현되는 메인맵의 X좌표',
+        description: '7단계로 표현되는 메인맵의 Y좌표',
     })
     LocationMapY: string;
 

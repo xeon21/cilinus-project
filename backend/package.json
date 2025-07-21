@@ -1,8 +1,8 @@
 {
-  "name": "forefore",
+  "name": "cilinus-aidr",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "description": "cilinus-aidr backend",
+  "author": "cilinu",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {

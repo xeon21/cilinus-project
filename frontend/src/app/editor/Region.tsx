@@ -6,6 +6,7 @@ import styled, { css } from 'styled-components';
 import { useEditorStore, Region as RegionType } from '@/store/editorStore';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { WebpageIframe } from './WebpageIframe';
 
 const Zone = styled.div<{
   $isSelected: boolean;
@@ -93,11 +94,18 @@ const ContentWrapper = styled.div.attrs({
   width: 100%;
   height: 100%;
   pointer-events: none;
-  img, video, iframe {
+  img, video {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border: none;
+  }
+  iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    background: white;
   }
 `;
 
@@ -217,7 +225,7 @@ export const Region = ({ sceneId, region, canvasHeight, onZoneClick, onFileDrop,
       case 'video':
         return <video src={region.content.src} autoPlay muted loop playsInline />;
       case 'webpage':
-        return <iframe srcDoc={region.content.src} title="웹페이지 콘텐츠" />;
+        return <WebpageIframe srcDoc={region.content.src} canvasHeight={canvasHeight} />;
       default:
         return null;
     }

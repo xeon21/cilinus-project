@@ -309,7 +309,18 @@ export default function EdgeEditorPage() {
                           break;
                         case 'webpage':
                           const escapedSrc = region.content.src.replace(/"/g, '&quot;');
-                          contentHtml = `<iframe srcdoc="${escapedSrc}"></iframe>`;
+                          const currentResolution = canvasResolutions.find(r => r.id === scene.resolutionId);
+                          const currentCanvasHeight = currentResolution?.vertical || 158;
+                          // Create a wrapper div that will handle the scaling
+                          contentHtml = `
+                            <div class="webpage-wrapper" style="width: 100%; height: 100%; overflow: hidden; position: relative;">
+                              <iframe 
+                                srcdoc="${escapedSrc}" 
+                                style="width: 1920px; height: ${currentCanvasHeight}px; border: none; transform-origin: top left; transform: scale(var(--iframe-scale, 1));"
+                                onload="this.parentElement.style.setProperty('--iframe-scale', this.parentElement.clientWidth / 1920)"
+                              ></iframe>
+                            </div>
+                          `;
                           break;
                       }
                     }
@@ -330,6 +341,17 @@ export default function EdgeEditorPage() {
             let currentSceneIndex = 0;
             const displayWrapper = document.querySelector('.display-wrapper');
 
+            function updateIframeScales() {
+              const wrappers = document.querySelectorAll('.webpage-wrapper');
+              wrappers.forEach(wrapper => {
+                const iframe = wrapper.querySelector('iframe');
+                if (iframe) {
+                  const scale = wrapper.clientWidth / 1920;
+                  wrapper.style.setProperty('--iframe-scale', scale);
+                }
+              });
+            }
+
             function showScene(index) {
               if (!scenes[index]) return;
               
@@ -343,6 +365,9 @@ export default function EdgeEditorPage() {
                 const el = document.getElementById('scene-' + scene.id);
                 if(el) el.style.display = i === index ? 'flex' : 'none';
               });
+
+              // Update iframe scales after showing the scene
+              setTimeout(updateIframeScales, 100);
 
               if (scenes.length > 1) {
                 const nextDelay = currentScene.transitionTime;
@@ -360,6 +385,9 @@ export default function EdgeEditorPage() {
             if (scenes.length > 0) {
               showScene(0);
             }
+
+            // Add resize listener to update iframe scales
+            window.addEventListener('resize', updateIframeScales);
           <\/script>
         `;
 
@@ -378,8 +406,14 @@ export default function EdgeEditorPage() {
         }
         .scene-container { display: flex; width: 100%; height: 100%; }
         .region { height: 100%; box-sizing: border-box; overflow: hidden; background-color: #eee; }
-        .region img, .region video, .region iframe { 
+        .region img, .region video { 
             width: 100%; height: 100%; object-fit: cover; border: none; display: block; margin: 0px; padding: 0px;
+        }
+        .region .webpage-wrapper {
+            width: 100%; height: 100%; position: relative; overflow: hidden;
+        }
+        .region iframe { 
+            position: absolute; top: 0; left: 0;
         }
       </style>
     </head>

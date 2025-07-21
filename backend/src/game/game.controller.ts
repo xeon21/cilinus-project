@@ -11,10 +11,12 @@ import {
   ApiOperation,
   ApiParam,
   ApiResponse,
-  ApiBody
+  ApiBody,
+  ApiBearerAuth
 } from '@nestjs/swagger'; //Swagger 데코레이터 추가
 
 @ApiTags('Game')
+@ApiBearerAuth()
 @Controller('Game')
 @UseGuards(JwtAuthGuard) 
 export class GameController{
@@ -23,9 +25,25 @@ export class GameController{
     //GET Protocol
     
     @Get('getServerStatus/:itemIndex')
+    @ApiOperation({ summary: '서버 상태 조회', description: '특정 인덱스에 해당하는 서버 상태 정보를 조회합니다.' })
+    @ApiParam({ name: 'itemIndex', type: 'number', description: '조회할 아이템 인덱스', example: 1 })
+    @ApiResponse({ 
+        status: 200, 
+        description: '서버 상태 조회 성공',
+        schema: {
+            example: {
+                data: [
+                    { serverName: '이마트', regeion: '수원', serverStatus: '1' },
+                    { serverName: '월마트', regeion: '서울', serverStatus: '0' }
+                ]
+            }
+        }
+    })
+    @ApiResponse({ status: 401, description: '인증 실패' })
     async getServerStatus(@Param('itemIndex') itemIndex: number)
     {
-      console.log(`Server-Status 요청 받음, 파라미터: ${itemIndex}`);
+      this.logger.log(`[GET] getServerStatus - itemIndex: ${itemIndex}`);
+      this.logger.debug(`Request received for server status with itemIndex: ${itemIndex}`);
 
         // 실제로는 데이터베이스에서 조회해야 할 데이터입니다.
         // 여기서는 요청에 따라 예시용 데이터를 생성합니다.
@@ -42,15 +60,33 @@ export class GameController{
 
     // NestJS는 객체나 배열을 반환하면 자동으로 JSON 형태로 변환하여 응답합니다.
     // 프론트엔드에서 result.data로 접근했으므로, { data: ... } 형태로 감싸서 반환합니다.
-    return { data: mockServerData };
+    const response = { data: mockServerData };
+    this.logger.debug(`[GET] getServerStatus - Response: ${JSON.stringify(response)}`);
+    return response;
            
     }
 
 
     @Get('getUserStatistics/:itemIndex')
+    @ApiOperation({ summary: '사용자 통계 조회', description: '특정 인덱스에 해당하는 사용자 통계 정보를 조회합니다.' })
+    @ApiParam({ name: 'itemIndex', type: 'number', description: '조회할 아이템 인덱스', example: 1 })
+    @ApiResponse({ 
+        status: 200, 
+        description: '사용자 통계 조회 성공',
+        schema: {
+            example: {
+                data: [
+                    { locationName: '수원', Amount: '30' },
+                    { locationName: '서울', Amount: '50' }
+                ]
+            }
+        }
+    })
+    @ApiResponse({ status: 401, description: '인증 실패' })
     async getUserStatistics(@Param('itemIndex') itemIndex: number)
     {
-      console.log(`Server-Status 요청 받음, 파라미터: ${itemIndex}`);
+      this.logger.log(`[GET] getUserStatistics - itemIndex: ${itemIndex}`);
+      this.logger.debug(`Request received for user statistics with itemIndex: ${itemIndex}`);
 
     // 실제로는 데이터베이스에서 조회해야 할 데이터입니다.
         // 여기서는 요청에 따라 예시용 데이터를 생성합니다.
@@ -67,7 +103,9 @@ export class GameController{
 
         // NestJS는 객체나 배열을 반환하면 자동으로 JSON 형태로 변환하여 응답합니다.
         // 프론트엔드에서 result.data로 접근했으므로, { data: ... } 형태로 감싸서 반환합니다.
-        return { data: mockServerData };
+        const response = { data: mockServerData };
+        this.logger.debug(`[GET] getUserStatistics - Response: ${JSON.stringify(response)}`);
+        return response;
            
     }
 
