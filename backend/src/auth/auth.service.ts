@@ -1,15 +1,26 @@
 // backend/src/auth/auth.service.ts
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthRepository } from './auth.repository';
 import * as bcrypt from 'bcrypt';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly jwtService: JwtService,
     private readonly authRepository: AuthRepository,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    const jwtSecret = this.configService.get<string>('JWT_SECRET');
+    const jwtExpiresIn = this.configService.get<string>('JWT_EXPIRES_IN');
+    
+    this.logger.log(`JWT Configuration loaded:`);
+    this.logger.log(`JWT_SECRET: ${jwtSecret ? '[SET - ' + jwtSecret.substring(0, 10) + '...]' : '[NOT SET]'}`);
+    this.logger.log(`JWT_EXPIRES_IN: ${jwtExpiresIn || '[NOT SET]'}`);
+  }
 
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.authRepository.findUserByUsername(username);

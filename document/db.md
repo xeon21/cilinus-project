@@ -49,31 +49,258 @@
 - 본사(headquarters)는 주소 필수, 가상 조직(branch)은 선택적
 
 ---
+# 사용자 권한 관리 시스템 (RBAC 기반)
 
-### 2.2 users (계층적 권한을 가진 사용자 관리)
+## 1. 개요
+기존 계층적 권한 시스템을 RBAC(Role-Based Access Control) 기반으로 발전시킨 확장성 있는 사용자 권한 관리 시스템입니다.
 
-**테이블 목적**: 조직 계층 구조에 맞춘 권한 시스템을 지원하는 사용자 관리입니다.
+## 2. 데이터베이스 스키마
 
+### 2.1 users (사용자 기본 정보)
 |컬럼명|데이터 타입|제약조건|설명|
 |---|---|---|---|
 |**id**|SERIAL|PRIMARY KEY|• 사용자 고유 식별자|
-|**organization_id**|INTEGER|REFERENCES organizations(id)|• 소속 조직<br>• 권한 범위 결정 기준<br>• 상위 조직 소속 시 하위 조직 접근 가능|
+|**organization_id**|INTEGER|REFERENCES organizations(id) NULL|• 소속 조직 (선택적)<br>• 조직별 데이터 필터링용|
 |**email**|VARCHAR(255)|UNIQUE, NOT NULL|• 로그인 ID<br>• 전체 시스템에서 유일|
 |**password_hash**|VARCHAR(255)|NOT NULL|• bcrypt 해싱된 비밀번호|
 |**full_name**|VARCHAR(255)|NOT NULL|• 사용자 실명|
-|**role**|VARCHAR(50)|NOT NULL|• 'super_admin': 전체 시스템 관리<br>• 'org_admin': 조직 및 하위 조직 관리<br>• 'manager': 소속 조직 내 제품/가격 관리<br>• 'operator': 소속 조직 내 조회/기본 작업|
 |**is_active**|BOOLEAN|DEFAULT true|• 계정 활성화 상태|
-|**last_login**|TIMESTAMP|NULL 허용|• 마지막 로그인 시간|
+|**last_login**|TIMESTAMP|NULL|• 마지막 로그인 시간|
 |**created_at**|TIMESTAMP|DEFAULT NOW()|• 계정 생성 일시|
+|**updated_at**|TIMESTAMP|DEFAULT NOW()|• 계정 수정 일시|
 
-**권한 규칙**:
+### 2.2 roles (역할 정의)
+|컬럼명|데이터 타입|제약조건|설명|
+|---|---|---|---|
+|**id**|SERIAL|PRIMARY KEY|• 역할 고유 식별자|
+|**name**|VARCHAR(50)|UNIQUE, NOT NULL|• 역할명 (영문)|
+|**display_name**|VARCHAR(100)|NOT NULL|• 역할 표시명 (다국어 지원)|
+|**description**|TEXT|NULL|• 역할 설명|
+|**is_system**|BOOLEAN|DEFAULT false|• 시스템 기본 역할 여부|
+|**created_at**|TIMESTAMP|DEFAULT NOW()|• 생성 일시|
 
-- 상위 조직 사용자는 모든 하위 조직 데이터 조회/관리 가능
-- 하위 조직 사용자는 자신의 조직 데이터만 접근
-- org_admin은 하위 조직 사용자 생성 가능
-- 교차 조직 접근은 불가
+### 2.3 permissions (권한 정의)
+|컬럼명|데이터 타입|제약조건|설명|
+|---|---|---|---|
+|**id**|SERIAL|PRIMARY KEY|• 권한 고유 식별자|
+|**resource**|VARCHAR(100)|NOT NULL|• 리소스명 (menu, api, feature)|
+|**action**|VARCHAR(50)|NOT NULL|• 액션 (view, create, update, delete)|
+|**name**|VARCHAR(100)|UNIQUE, NOT NULL|• 권한명 (resource.action)|
+|**description**|TEXT|NULL|• 권한 설명|
+|**created_at**|TIMESTAMP|DEFAULT NOW()|• 생성 일시|
 
----
+### 2.4 user_roles (사용자-역할 매핑)
+|컬럼명|데이터 타입|제약조건|설명|
+|---|---|---|---|
+|**user_id**|INTEGER|REFERENCES users(id) ON DELETE CASCADE|• 사용자 ID|
+|**role_id**|INTEGER|REFERENCES roles(id) ON DELETE CASCADE|• 역할 ID|
+|**assigned_at**|TIMESTAMP|DEFAULT NOW()|• 할당 일시|
+|**assigned_by**|INTEGER|REFERENCES users(id)|• 할당한 관리자|
+|**expires_at**|TIMESTAMP|NULL|• 만료 일시 (임시 권한용)|
+|PRIMARY KEY|(user_id, role_id)||• 복합 기본키|
+
+### 2.5 role_permissions (역할-권한 매핑)
+|컬럼명|데이터 타입|제약조건|설명|
+|---|---|---|---|
+|**role_id**|INTEGER|REFERENCES roles(id) ON DELETE CASCADE|• 역할 ID|
+|**permission_id**|INTEGER|REFERENCES permissions(id) ON DELETE CASCADE|• 권한 ID|
+|**created_at**|TIMESTAMP|DEFAULT NOW()|• 생성 일시|
+|PRIMARY KEY|(role_id, permission_id)||• 복합 기본키|
+
+### 2.6 user_permissions (사용자별 개별 권한 - 선택적)
+|컬럼명|데이터 타입|제약조건|설명|
+|---|---|---|---|
+|**user_id**|INTEGER|REFERENCES users(id) ON DELETE CASCADE|• 사용자 ID|
+|**permission_id**|INTEGER|REFERENCES permissions(id) ON DELETE CASCADE|• 권한 ID|
+|**granted**|BOOLEAN|DEFAULT true|• 권한 부여/제거 (true/false)|
+|**assigned_at**|TIMESTAMP|DEFAULT NOW()|• 할당 일시|
+|**assigned_by**|INTEGER|REFERENCES users(id)|• 할당한 관리자|
+|**expires_at**|TIMESTAMP|NULL|• 만료 일시|
+|PRIMARY KEY|(user_id, permission_id)||• 복합 기본키|
+
+## 3. 기본 역할 및 권한 체계
+
+### 3.1 시스템 기본 역할
+1. **super_admin** (최고 관리자)
+   - 전체 시스템 관리
+   - 모든 권한 보유
+   - 다른 관리자 생성/관리
+
+2. **org_admin** (조직 관리자)
+   - 소속 조직 및 하위 조직 관리
+   - 조직 내 사용자 관리
+   - 조직 내 데이터 전체 접근
+
+3. **manager** (매니저)
+   - 소속 조직 내 제품/가격 관리
+   - 리포트 조회 및 생성
+   - 제한된 사용자 관리
+
+4. **operator** (운영자)
+   - 소속 조직 내 데이터 조회
+   - 기본 작업 수행
+   - 읽기 전용 접근
+
+5. **viewer** (조회자)
+   - 대시보드 및 리포트 조회만 가능
+   - 읽기 전용 접근
+
+### 3.2 권한 카테고리
+1. **메뉴 접근 권한**
+   - menu.admin.view
+   - menu.dashboard.view
+   - menu.user_management.view
+   - menu.product.view
+   - menu.report.view
+
+2. **API 권한**
+   - api.users.create
+   - api.users.read
+   - api.users.update
+   - api.users.delete
+   - api.products.* (CRUD)
+   - api.reports.* (CRUD)
+
+3. **기능 권한**
+   - feature.export_data
+   - feature.bulk_import
+   - feature.system_config
+   - feature.audit_log
+
+## 4. 권한 규칙 및 정책
+
+### 4.1 권한 계산 로직
+1. 사용자의 모든 역할에서 권한을 수집
+2. 개별 할당된 권한 추가 (granted=true)
+3. 개별 제거된 권한 제외 (granted=false)
+4. 만료된 권한 제외 (expires_at < NOW())
+
+### 4.2 조직 기반 데이터 접근
+- organization_id 기반 데이터 필터링
+- 상위 조직 사용자는 하위 조직 데이터 접근 가능
+- 권한과 조직 필터를 AND 조건으로 적용
+
+### 4.3 감사 로그
+- 모든 권한 변경사항 기록
+- 누가, 언제, 무엇을 변경했는지 추적
+- user_roles, user_permissions 테이블의 assigned_by, assigned_at 활용
+
+## 5. 마이그레이션 전략
+
+### 5.1 기존 시스템에서 마이그레이션
+```sql
+-- 1. 새로운 역할 생성
+INSERT INTO roles (name, display_name, is_system) VALUES
+('super_admin', '최고 관리자', true),
+('org_admin', '조직 관리자', true),
+('manager', '매니저', true),
+('operator', '운영자', true),
+('viewer', '조회자', true);
+
+-- 2. 권한 마이그레이션
+INSERT INTO permissions (resource, action, name) VALUES
+('menu.admin', 'view', 'menu.admin.view'),
+('menu.dashboard', 'view', 'menu.dashboard.view'),
+('api.users', 'read', 'api.users.read'),
+-- ... 기타 권한
+
+-- 3. 기존 사용자 역할 매핑
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.id, r.id
+FROM users u
+JOIN roles r ON r.name = 
+  CASE u.role 
+    WHEN 'admin' THEN 'super_admin'
+    WHEN 'viewer' THEN 'viewer'
+    -- ... 기타 매핑
+  END;
+```
+
+## 6. 확장성 및 유연성
+
+### 6.1 장점
+- **세분화된 권한 관리**: 리소스와 액션 기반의 세밀한 권한 제어
+- **유연한 역할 구성**: 새로운 역할 추가 및 권한 조합 용이
+- **임시 권한**: expires_at을 통한 기간 제한 권한 부여
+- **권한 오버라이드**: 개별 사용자별 권한 추가/제거 가능
+- **감사 추적**: 모든 권한 변경 이력 관리
+
+### 6.2 확장 가능성
+- 동적 권한 생성
+- 권한 그룹화 및 템플릿
+- 조건부 권한 (시간, 위치 기반)
+- 권한 위임 기능
+- 다중 조직 소속 지원
+
+## 7. 구현 예시
+
+### 7.1 사용자 권한 확인
+```typescript
+async function getUserPermissions(userId: number): Promise<string[]> {
+  // 1. 역할 기반 권한
+  const rolePermissions = await db.query(`
+    SELECT DISTINCT p.name
+    FROM users u
+    JOIN user_roles ur ON u.id = ur.user_id
+    JOIN role_permissions rp ON ur.role_id = rp.role_id
+    JOIN permissions p ON rp.permission_id = p.id
+    WHERE u.id = ? 
+      AND u.is_active = true
+      AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+  `, [userId]);
+
+  // 2. 개별 할당 권한
+  const userPermissions = await db.query(`
+    SELECT p.name, up.granted
+    FROM user_permissions up
+    JOIN permissions p ON up.permission_id = p.id
+    WHERE up.user_id = ?
+      AND (up.expires_at IS NULL OR up.expires_at > NOW())
+  `, [userId]);
+
+  // 3. 권한 병합 및 계산
+  const permissions = new Set(rolePermissions.map(p => p.name));
+  
+  userPermissions.forEach(up => {
+    if (up.granted) {
+      permissions.add(up.name);
+    } else {
+      permissions.delete(up.name);
+    }
+  });
+
+  return Array.from(permissions);
+}
+```
+
+### 7.2 권한 체크 미들웨어
+```typescript
+function requirePermission(permission: string) {
+  return async (req, res, next) => {
+    const userPermissions = await getUserPermissions(req.user.id);
+    
+    if (userPermissions.includes(permission)) {
+      next();
+    } else {
+      res.status(403).json({ error: 'Permission denied' });
+    }
+  };
+}
+
+// 사용 예
+router.get('/admin/users', 
+  requirePermission('menu.admin.view'), 
+  getUsersController
+);
+```
+
+## 8. 보안 고려사항
+
+1. **최소 권한 원칙**: 기본적으로 최소한의 권한만 부여
+2. **권한 분리**: 중요 작업은 여러 권한 조합 필요
+3. **정기 검토**: 만료되지 않은 권한의 주기적 검토
+4. **권한 충돌 방지**: 역할 간 권한 충돌 검증
+5. **감사 로그 보호**: 권한 변경 로그의 무결성 보장
 
 ### 2.3 device_templates (디바이스 템플릿 관리) - 신규 테이블
 

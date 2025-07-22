@@ -7,13 +7,18 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt.strategy';
 import { AuthRepository } from './auth.repository'; // [추가]
 import { MysqlProvider } from '../database/mysql.provider'; // [추가]
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
     PassportModule,
-    JwtModule.register({
-      secret: 'YOUR_SECRET_KEY',
-      signOptions: { expiresIn: '1h' },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get('JWT_SECRET'),
+        signOptions: { expiresIn: configService.get('JWT_EXPIRES_IN') || '7d' },
+      }),
+      inject: [ConfigService],
     }),
   ],
   controllers: [AuthController],
