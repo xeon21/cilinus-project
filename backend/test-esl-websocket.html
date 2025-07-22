@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESL Device WebSocket Test</title>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .connect { background-color: #4CAF50; color: white; }
+        .register { background-color: #2196F3; color: white; }
+        .heartbeat { background-color: #FF9800; color: white; }
+        .disconnect { background-color: #f44336; color: white; }
+        .status { background-color: #9C27B0; color: white; }
+        .log {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px;
+        }
+        .log-sent { color: #2196F3; }
+        .log-received { color: #4CAF50; }
+        .log-error { color: #f44336; }
+        .status-info {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #e3f2fd;
+            border-radius: 4px;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ESL Device WebSocket Test Client</h1>
+        
+        <div class="status-info">
+            <strong>Connection Status:</strong> <span id="connectionStatus">Disconnected</span><br>
+            <strong>Socket ID:</strong> <span id="socketId">-</span><br>
+            <strong>Device ID:</strong> <span id="deviceIdDisplay">-</span>
+        </div>
+
+        <div class="controls">
+            <div>
+                <input type="text" id="deviceId" placeholder="Device ID (e.g., ESL-001)" value="ESL-001">
+                <input type="text" id="serverUrl" placeholder="Server URL" value="http://localhost:3002">
+            </div>
+            <div>
+                <button class="connect" onclick="connect()">Connect</button>
+                <button class="register" onclick="register()">Register Device</button>
+                <button class="heartbeat" onclick="sendHeartbeat()">Send Heartbeat</button>
+                <button class="status" onclick="getStatus()">Get Status</button>
+                <button class="disconnect" onclick="disconnect()">Disconnect</button>
+            </div>
+            <div style="margin-top: 10px;">
+                <label>
+                    <input type="checkbox" id="autoHeartbeat" onchange="toggleAutoHeartbeat()">
+                    Auto Heartbeat (every 10s)
+                </label>
+            </div>
+        </div>
+
+        <h3>Log</h3>
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        let socket = null;
+        let heartbeatInterval = null;
+        let isConnected = false;
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            logElement.appendChild(entry);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function updateConnectionStatus(status) {
+            document.getElementById('connectionStatus').textContent = status;
+            isConnected = status === 'Connected';
+        }
+
+        function connect() {
+            if (socket && socket.connected) {
+                log('Already connected', 'error');
+                return;
+            }
+
+            const serverUrl = document.getElementById('serverUrl').value;
+            const deviceId = document.getElementById('deviceId').value;
+
+            log(`Connecting to ${serverUrl}/esl-device...`, 'sent');
+            
+            socket = io(`${serverUrl}/esl-device`, {
+                transports: ['websocket'],
+                query: {
+                    deviceId: deviceId
+                }
+            });
+
+            socket.on('connect', () => {
+                log('Connected to server', 'received');
+                updateConnectionStatus('Connected');
+                document.getElementById('socketId').textContent = socket.id;
+            });
+
+            socket.on('connected', (data) => {
+                log(`Server response: ${JSON.stringify(data)}`, 'received');
+            });
+
+            socket.on('registered', (data) => {
+                log(`Registration response: ${JSON.stringify(data)}`, 'received');
+                if (data.success) {
+                    document.getElementById('deviceIdDisplay').textContent = data.deviceId;
+                }
+            });
+
+            socket.on('heartbeat-ack', (data) => {
+                log(`Heartbeat acknowledged: ${JSON.stringify(data)}`, 'received');
+            });
+
+            socket.on('device-failure', (data) => {
+                log(`DEVICE FAILURE ALERT: ${JSON.stringify(data)}`, 'error');
+            });
+
+            // 브로드캐스트 이벤트 리스너 추가
+            socket.on('system-message', (data) => {
+                log(`📢 SYSTEM MESSAGE [${data.level}]: ${data.message}`, data.level === 'error' ? 'error' : 'received');
+            });
+
+            socket.on('device-status-changed', (data) => {
+                log(`📊 Device Status Changed: ${data.deviceId} ${data.oldStatus} → ${data.newStatus}`, 'received');
+            });
+
+            socket.on('emergency-alert', (data) => {
+                log(`🚨 EMERGENCY ALERT [${data.severity}]: ${data.title} - ${data.message}`, 'error');
+                // 긴급 알림은 별도로 강조 표시
+                alert(`🚨 긴급 알림!\n\n${data.title}\n\n${data.message}`);
+            });
+
+            socket.on('bulk-update-chunk', (data) => {
+                log(`📦 Bulk Update Chunk ${data.chunkIndex + 1}/${data.totalChunks} (${data.chunkSize} items)`, 'received');
+            });
+
+            // 커스텀 이벤트 리스너 (매장별 브로드캐스트용)
+            socket.onAny((eventName, data) => {
+                if (!['connected', 'registered', 'heartbeat-ack', 'unregistered', 'device-failure', 
+                      'system-message', 'device-status-changed', 'emergency-alert', 'bulk-update-chunk'].includes(eventName)) {
+                    log(`📨 Custom Event [${eventName}]: ${JSON.stringify(data)}`, 'received');
+                }
+            });
+
+            socket.on('disconnect', () => {
+                log('Disconnected from server', 'error');
+                updateConnectionStatus('Disconnected');
+                document.getElementById('socketId').textContent = '-';
+                document.getElementById('deviceIdDisplay').textContent = '-';
+            });
+
+            socket.on('error', (error) => {
+                log(`Socket error: ${error}`, 'error');
+            });
+        }
+
+        function register() {
+            if (!socket || !socket.connected) {
+                log('Not connected to server', 'error');
+                return;
+            }
+
+            const deviceId = document.getElementById('deviceId').value;
+            const data = {
+                deviceId: deviceId,
+                metadata: {
+                    location: 'Store A',
+                    type: 'Price Tag',
+                    firmware: '1.0.0'
+                }
+            };
+
+            log(`Registering device: ${JSON.stringify(data)}`, 'sent');
+            socket.emit('register', data);
+        }
+
+        function sendHeartbeat() {
+            if (!socket || !socket.connected) {
+                log('Not connected to server', 'error');
+                return;
+            }
+
+            const deviceId = document.getElementById('deviceId').value;
+            const heartbeatData = {
+                deviceId: deviceId,
+                timestamp: Date.now(),
+                status: 'active',
+                data: {
+                    battery: 85,
+                    signal: -65
+                }
+            };
+
+            log(`Sending heartbeat: ${JSON.stringify(heartbeatData)}`, 'sent');
+            socket.emit('heartbeat', heartbeatData);
+        }
+
+        function getStatus() {
+            if (!socket || !socket.connected) {
+                log('Not connected to server', 'error');
+                return;
+            }
+
+            const deviceId = document.getElementById('deviceId').value;
+            log(`Getting status for device: ${deviceId}`, 'sent');
+            
+            socket.emit('status', { deviceId: deviceId }, (response) => {
+                log(`Status response: ${JSON.stringify(response)}`, 'received');
+            });
+        }
+
+        function disconnect() {
+            if (!socket || !socket.connected) {
+                log('Not connected to server', 'error');
+                return;
+            }
+
+            const deviceId = document.getElementById('deviceId').value;
+            log(`Unregistering device: ${deviceId}`, 'sent');
+            socket.emit('unregister', { deviceId: deviceId });
+
+            setTimeout(() => {
+                log('Disconnecting from server', 'sent');
+                socket.disconnect();
+                socket = null;
+            }, 500);
+        }
+
+        function toggleAutoHeartbeat() {
+            const checkbox = document.getElementById('autoHeartbeat');
+            if (checkbox.checked) {
+                log('Auto heartbeat enabled', 'info');
+                heartbeatInterval = setInterval(() => {
+                    if (isConnected) {
+                        sendHeartbeat();
+                    }
+                }, 10000);
+            } else {
+                log('Auto heartbeat disabled', 'info');
+                if (heartbeatInterval) {
+                    clearInterval(heartbeatInterval);
+                    heartbeatInterval = null;
+                }
+            }
+        }
+
+        // Initial log
+        log('ESL Device WebSocket Test Client ready', 'info');
+    </script>
+</body>
+</html>

@@ -43,7 +43,7 @@ export const menuItems: MenuItem[] = [
    
     { title: 'Gateway Statue', icon: '📡', path: '/gateway-status'},
     { title: 'Tag Status', icon: '🏷️', path: '/tag-status'},
-    { title: 'Sensor Status', icon: '🌡️', path: '/sensor-status'},
+    { title: 'Device Status', icon: '🌡️', path: '/device-status'},
       
      {
         title: 'Editor',

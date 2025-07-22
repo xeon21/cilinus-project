@@ -11,8 +11,8 @@ import { AdminModule } from './admin/admin.module'; // [추가]
 import { ScheduleModule } from '@nestjs/schedule'; // [추가]
 import { ResourceModule } from './resource/resource.module'; // [추가]
 import { TagStatusModule } from './tag-status/tag-status.module';
-import { TagStatusController } from './tag-status/tag-status.controller';
-import { TagStatusService } from './tag-status/tag-status.service';
+import { DeviceStatusModule } from './device-status/device-status.module';
+import { EslDeviceModule } from './esl-device/esl-device.module'; // ESL 디바이스 WebSocket 모듈
 
 @Module({
   //imports: [
@@ -38,6 +38,8 @@ import { TagStatusService } from './tag-status/tag-status.service';
     ResourceModule, // [추가] 새로 만들 리소스 모듈
     AdminModule,
     TagStatusModule, // [수정] TagStatusModule만 남김
+    DeviceStatusModule,
+    EslDeviceModule, // ESL 디바이스 WebSocket 모듈
   ],
 
   controllers: [], // [수정] TagStatusController 제거
