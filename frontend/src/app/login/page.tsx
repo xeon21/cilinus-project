@@ -62,8 +62,8 @@ const ErrorMessage = styled.p`
 `;
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('superadmin@cjfreshway.com');
+  const [password, setPassword] = useState('password123');
   const [error, setError] = useState<string | null>(null);
   const login = useAuthStore((state) => state.login);
   const router = useRouter();
@@ -71,10 +71,10 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login({ username, password });
+      await login({ email, password });
       router.push('/dashboard/resource-status'); // 로그인 성공 시 대시보드로 이동
     } catch (err) {
-      alert('아이디 또는 비밀번호가 올바르지 않습니다.');
+      setError('이메일 또는 비밀번호가 올바르지 않습니다.');
     }
   };
 
@@ -83,18 +83,21 @@ export default function LoginPage() {
       <LoginForm onSubmit={handleSubmit}>
         <Title>Cilinus AIDS</Title>
         <Input
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
         />
         <Input
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
         />
         <Button type="submit">로그인</Button>
+        {error && <ErrorMessage>{error}</ErrorMessage>}
       </LoginForm>
     </LoginPageContainer>
   );

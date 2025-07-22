@@ -7,6 +7,10 @@ import { MysqlProvider } from '../database/mysql.provider';
 
 @Module({
   controllers: [CanvasResolutionController],
-  providers: [CanvasResolutionService, CanvasResolutionRepository, MysqlProvider],
+  providers: [
+    CanvasResolutionService,
+    CanvasResolutionRepository,
+    MysqlProvider,
+  ],
 })
 export class CanvasResolutionModule {}

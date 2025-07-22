@@ -1,5 +1,13 @@
 // backend/src/canvas-resolution/canvas-resolution.controller.ts
-import { Controller, Get, Post, Body, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { CanvasResolutionService } from './canvas-resolution.service';
 import { CreateCanvasResolutionDto } from '../dto/canvas-resolution.dto';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';

@@ -6,7 +6,7 @@ export class AdminChangePasswordDto {
   @ApiProperty({
     description: 'New password for the user',
     minLength: 4,
-    example: 'newPassword123'
+    example: 'newPassword123',
   })
   @IsString()
   @IsNotEmpty()

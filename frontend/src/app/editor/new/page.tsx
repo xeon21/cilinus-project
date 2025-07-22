@@ -310,7 +310,7 @@ export default function EdgeEditorPage() {
                         case 'webpage':
                           const escapedSrc = region.content.src.replace(/"/g, '&quot;');
                           const currentResolution = canvasResolutions.find(r => r.id === scene.resolutionId);
-                          const currentCanvasHeight = currentResolution?.vertical || 158;
+                          const currentCanvasHeight = currentResolution?.height || 158;
                           // Create a wrapper div that will handle the scaling
                           contentHtml = `
                             <div class="webpage-wrapper" style="width: 100%; height: 100%; overflow: hidden; position: relative;">

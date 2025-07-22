@@ -35,7 +35,9 @@ export class TagStatusRepository {
       WHERE t.storeCode = ?
       ORDER BY t.receivingTime DESC
     `;
-    const results = await this.db.executeQuery<TagDetailData[]>(query, [storeCode]);
+    const results = await this.db.executeQuery<TagDetailData[]>(query, [
+      storeCode,
+    ]);
     return results;
   }
 }

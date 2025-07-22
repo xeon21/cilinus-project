@@ -9,15 +9,20 @@ export class CanvasResolutionRepository {
 
   async create(dto: CreateCanvasResolutionDto) {
     const { name, width, height } = dto;
-    const query = 'INSERT INTO canvas_resolutions (name, width, height) VALUES (?, ?, ?)';
-    const result = await this.db.executeQuery<any>(query, [name, width, height]);
+    const query =
+      'INSERT INTO canvas_resolutions (name, width, height) VALUES (?, ?, ?)';
+    const result = await this.db.executeQuery<any>(query, [
+      name,
+      width,
+      height,
+    ]);
     return { id: result.insertId, ...dto };
   }
 
   async findAll() {
-    console.log
+    console.log;
     const query = 'SELECT * FROM canvas_resolutions ORDER BY id ASC';
-     console.log(query);
+    console.log(query);
     return this.db.executeQuery(query);
   }
 

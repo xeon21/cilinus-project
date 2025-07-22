@@ -32,7 +32,7 @@ export const menuItems: MenuItem[] = [
         title: 'Dashboard',
         icon: '📊',
         pathPrefix: '/dashboard',
-        permission: 'menu_dashboard_view',
+        permission: 'log.read',
         children: [
            // --- [추가] ---
             { title: 'Resource Status', path: '/dashboard/resource-status' },
@@ -62,7 +62,7 @@ export const menuItems: MenuItem[] = [
             { title: '다이나믹 에디터', path: '/dynamic_page/new' },
         ]
     },
-    { title: 'Admin', icon: '👑', path: '/admin' , permission: 'menu_admin_view' },
+    { title: 'Admin', icon: '👑', path: '/admin' , permission: 'user.create' },
 
     
 ];

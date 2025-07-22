@@ -11,7 +11,10 @@ export class ProjectService {
     return this.projectRepository.create(createProjectDto, userId);
   }
 
- findAll(filters: { author?: string; startDate?: string; endDate?: string }, pagination: { page: number; limit: number }) {
+  findAll(
+    filters: { author?: string; startDate?: string; endDate?: string },
+    pagination: { page: number; limit: number },
+  ) {
     return this.projectRepository.findAll(filters, pagination);
   }
 

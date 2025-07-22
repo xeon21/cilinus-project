@@ -60,7 +60,7 @@ describe('AdminController (e2e)', () => {
         .set('Authorization', `Bearer ${adminToken}`)
         .expect(404);
     });
-    
+
     // This test is destructive and should run last or with a proper db reset strategy.
     it('should successfully delete a user for admin', () => {
       return request(app.getHttpServer())
@@ -70,4 +70,3 @@ describe('AdminController (e2e)', () => {
     });
   });
 });
-

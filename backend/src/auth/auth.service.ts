@@ -16,23 +16,46 @@ export class AuthService {
   ) {
     const jwtSecret = this.configService.get<string>('JWT_SECRET');
     const jwtExpiresIn = this.configService.get<string>('JWT_EXPIRES_IN');
-    
+
     this.logger.log(`JWT Configuration loaded:`);
-    this.logger.log(`JWT_SECRET: ${jwtSecret ? '[SET - ' + jwtSecret.substring(0, 10) + '...]' : '[NOT SET]'}`);
+    this.logger.log(
+      `JWT_SECRET: ${jwtSecret ? '[SET - ' + jwtSecret.substring(0, 10) + '...]' : '[NOT SET]'}`,
+    );
     this.logger.log(`JWT_EXPIRES_IN: ${jwtExpiresIn || '[NOT SET]'}`);
   }
 
-  async validateUser(username: string, pass: string): Promise<any> {
-    const user = await this.authRepository.findUserByUsername(username);
+  async validateUser(email: string, pass: string): Promise<any> {
+    this.logger.log(`Validating user with email: ${email}`);
+    const user = await this.authRepository.findUserByEmail(email);
 
-    if (user && (await bcrypt.compare(pass, user.password))) {
-      const permissions = await this.authRepository.getUserPermissions(user.userId);
-      const roles = await this.authRepository.getUserRoles(user.userId); // 역할 정보 가져오기
+    if (!user) {
+      this.logger.log(`User not found with email: ${email}`);
+      return null;
+    }
+
+    this.logger.log(
+      `Stored password hash: ${user.password?.substring(0, 20)}...`,
+    );
+
+    const isPasswordValid = await bcrypt.compare(pass, user.password);
+    this.logger.log(`Password validation result: ${isPasswordValid}`);
+
+    if (user && isPasswordValid) {
+      const permissions = await this.authRepository.getUserPermissions(user.id);
+      const roles = await this.authRepository.getUserRoles(user.id);
+
+      this.logger.log(`User ${email} has roles: ${JSON.stringify(roles)}`);
+      this.logger.log(`User ${email} has role_name: ${user.roleName}`);
+      this.logger.log(`User ${email} has ${permissions.length} permissions`);
+
+      // last_login 업데이트
+      await this.authRepository.updateLastLogin(user.id);
+      this.logger.log(`Updated last_login for user: ${email}`);
 
       const { password, ...result } = user;
       return {
         ...result,
-        roles, // 역할 정보 추가
+        roles: roles.length > 0 ? roles : [user.roleName], // role_name을 기본값으로 사용
         permissions,
       };
     }
@@ -40,20 +63,43 @@ export class AuthService {
   }
 
   async login(user: any) {
-    const validatedUser = await this.validateUser(user.username, user.password);
+    this.logger.log(`Login attempt for email: ${user.email}`);
+    const validatedUser = await this.validateUser(user.email, user.password);
 
     if (!validatedUser) {
-      throw new UnauthorizedException('로그인 정보가 올바르지 않습니다.');
+      this.logger.error(`Login failed for email: ${user.email}`);
+      throw new UnauthorizedException(
+        '이메일 또는 비밀번호가 올바르지 않습니다.',
+      );
     }
-    
+
     const payload = {
-      username: validatedUser.username,
-      sub: validatedUser.userId,
-      roles: validatedUser.roles, // payload에 역할 정보 추가
+      email: validatedUser.email,
+      sub: validatedUser.id,
+      userName: validatedUser.userName,
+      roleName: validatedUser.roleName,
+      organizationId: validatedUser.organizationId,
+      roles: validatedUser.roles,
       permissions: validatedUser.permissions,
     };
+
+    this.logger.log(`Generating JWT token for user: ${validatedUser.email}`);
+    this.logger.log(
+      `User payload: ${JSON.stringify({ ...payload, permissions: `[${payload.permissions.length} permissions]` })}`,
+    );
+
     return {
       accessToken: this.jwtService.sign(payload),
+      user: {
+        id: validatedUser.id,
+        email: validatedUser.email,
+        userName: validatedUser.userName,
+        roleName: validatedUser.roleName,
+        organizationId: validatedUser.organizationId,
+        roles: validatedUser.roles,
+        permissions: validatedUser.permissions,
+        lastLogin: validatedUser.lastLogin,
+      },
     };
   }
 }

@@ -14,4 +14,3 @@ export class TagStatusService {
     return this.tagStatusRepository.getTagDetailByStoreCode(storeCode);
   }
 }
-

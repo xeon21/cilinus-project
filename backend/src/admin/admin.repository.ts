@@ -15,11 +15,19 @@ export class AdminRepository {
     return user;
   }
 
-  async createUser(dto: RegisterUserDto, hashedPassword: string): Promise<void> {
+  async createUser(
+    dto: RegisterUserDto,
+    hashedPassword: string,
+  ): Promise<void> {
     await this.db.executeTransaction(async (connection) => {
       // 1. Insert user into user_info
-      const insertUserQuery = 'INSERT INTO user_info (UserID, UserName, UserPass, regTime) VALUES (?, ?, ?,NOW())';
-      const userResult: any = await connection.query(insertUserQuery, [dto.userId, dto.userName, hashedPassword]);
+      const insertUserQuery =
+        'INSERT INTO user_info (UserID, UserName, UserPass, regTime) VALUES (?, ?, ?,NOW())';
+      const userResult: any = await connection.query(insertUserQuery, [
+        dto.userId,
+        dto.userName,
+        hashedPassword,
+      ]);
       const newUserIdx = userResult[0].insertId;
 
       // 2. Get roleId from roles table
@@ -32,7 +40,8 @@ export class AdminRepository {
       const roleId = roles[0].id;
 
       // 3. Insert into user_roles
-      const insertUserRoleQuery = 'INSERT INTO user_roles (userId, roleId) VALUES (?, ?)';
+      const insertUserRoleQuery =
+        'INSERT INTO user_roles (userId, roleId) VALUES (?, ?)';
       await connection.query(insertUserRoleQuery, [newUserIdx, roleId]);
     });
   }
@@ -52,7 +61,7 @@ export class AdminRepository {
       ORDER BY u.UserIdx DESC
     `;
     const users = await this.db.executeQuery<any[]>(query);
-    return users.map(user => ({
+    return users.map((user) => ({
       userIdx: user.UserIdx,
       userName: user.UserName,
       userId: user.UserID,
@@ -62,15 +71,25 @@ export class AdminRepository {
   }
 
   async updateUserRole(userIdx: number, role: string): Promise<void> {
-    this.logger.log(`Repository: Starting role update for user ${userIdx} to role ${role}`);
-    
+    this.logger.log(
+      `Repository: Starting role update for user ${userIdx} to role ${role}`,
+    );
+
     await this.db.executeTransaction(async (connection) => {
       this.logger.log('Transaction started.');
       try {
-        const deleteResult: any = await connection.query('DELETE FROM user_roles WHERE userId = ?', [userIdx]);
-        this.logger.log(`Deleted ${deleteResult[0].affectedRows} existing role(s) for user ${userIdx}.`);
+        const deleteResult: any = await connection.query(
+          'DELETE FROM user_roles WHERE userId = ?',
+          [userIdx],
+        );
+        this.logger.log(
+          `Deleted ${deleteResult[0].affectedRows} existing role(s) for user ${userIdx}.`,
+        );
 
-        const [roles]: any[] = await connection.query('SELECT id FROM roles WHERE name = ?', [role]);
+        const [roles]: any[] = await connection.query(
+          'SELECT id FROM roles WHERE name = ?',
+          [role],
+        );
         if (roles.length === 0) {
           this.logger.warn(`Role '${role}' not found in database.`);
           throw new Error('Role not found');
@@ -78,10 +97,19 @@ export class AdminRepository {
         const roleId = roles[0].id;
         this.logger.log(`Found roleId: ${roleId} for role name: ${role}.`);
 
-        await connection.query('INSERT INTO user_roles (userId, roleId) VALUES (?, ?)', [userIdx, roleId]);
-        this.logger.log(`Inserted new role mapping: (userId: ${userIdx}, roleId: ${roleId}).`);
-      } catch (error) { {
-          this.logger.error('Error during transaction, rolling back.', error.stack);
+        await connection.query(
+          'INSERT INTO user_roles (userId, roleId) VALUES (?, ?)',
+          [userIdx, roleId],
+        );
+        this.logger.log(
+          `Inserted new role mapping: (userId: ${userIdx}, roleId: ${roleId}).`,
+        );
+      } catch (error) {
+        {
+          this.logger.error(
+            'Error during transaction, rolling back.',
+            error.stack,
+          );
           // re-throw to trigger rollback
           throw error;
         }
@@ -96,9 +124,15 @@ export class AdminRepository {
     return result.affectedRows;
   }
 
-  async updatePassword(userIdx: number, hashedPassword: string): Promise<number> {
+  async updatePassword(
+    userIdx: number,
+    hashedPassword: string,
+  ): Promise<number> {
     const query = 'UPDATE user_info SET UserPass = ? WHERE UserIdx = ?';
-    const result = await this.db.executeQuery<any>(query, [hashedPassword, userIdx]);
+    const result = await this.db.executeQuery<any>(query, [
+      hashedPassword,
+      userIdx,
+    ]);
     return result.affectedRows;
   }
 }

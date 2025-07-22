@@ -4,7 +4,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export class RegisterUserDto {
   @ApiProperty({
     description: 'User ID',
-    example: 'user001'
+    example: 'user001',
   })
   @IsString()
   @IsNotEmpty()
@@ -12,7 +12,7 @@ export class RegisterUserDto {
 
   @ApiProperty({
     description: 'User name',
-    example: 'John Doe'
+    example: 'John Doe',
   })
   @IsString()
   @IsNotEmpty()
@@ -21,7 +21,7 @@ export class RegisterUserDto {
   @ApiProperty({
     description: 'User password',
     minLength: 4,
-    example: 'password123'
+    example: 'password123',
   })
   @IsString()
   @IsNotEmpty()
@@ -31,7 +31,7 @@ export class RegisterUserDto {
   @ApiProperty({
     description: 'User role',
     enum: ['admin', 'viewer'],
-    example: 'viewer'
+    example: 'viewer',
   })
   @IsString()
   @IsNotEmpty()

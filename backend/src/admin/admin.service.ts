@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Logger, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  ConflictException,
+} from '@nestjs/common';
 import { AdminRepository } from './admin.repository';
 import { UserDto } from '../dto/user.dto';
 import { UpdateUserRoleDto } from '../dto/user.dto';
@@ -30,14 +35,27 @@ export class AdminService {
     return this.adminRepository.getUsers();
   }
 
-  async updateUserRole(userIdx: number, updateUserRoleDto: UpdateUserRoleDto): Promise<void> {
-    this.logger.log(`Service: Updating role for user ${userIdx} to ${updateUserRoleDto.role}`);
+  async updateUserRole(
+    userIdx: number,
+    updateUserRoleDto: UpdateUserRoleDto,
+  ): Promise<void> {
+    this.logger.log(
+      `Service: Updating role for user ${userIdx} to ${updateUserRoleDto.role}`,
+    );
     try {
-      await this.adminRepository.updateUserRole(userIdx, updateUserRoleDto.role);
+      await this.adminRepository.updateUserRole(
+        userIdx,
+        updateUserRoleDto.role,
+      );
     } catch (error) {
-      this.logger.error(`Failed to update role for user ${userIdx}`, error.stack);
+      this.logger.error(
+        `Failed to update role for user ${userIdx}`,
+        error.stack,
+      );
       if (error.message === 'Role not found') {
-        throw new NotFoundException(`Role '${updateUserRoleDto.role}' not found.`);
+        throw new NotFoundException(
+          `Role '${updateUserRoleDto.role}' not found.`,
+        );
       }
       throw error;
     }
@@ -50,12 +68,18 @@ export class AdminService {
     }
   }
 
-  async changePasswordByAdmin(userIdx: number, adminChangePasswordDto: AdminChangePasswordDto): Promise<void> {
+  async changePasswordByAdmin(
+    userIdx: number,
+    adminChangePasswordDto: AdminChangePasswordDto,
+  ): Promise<void> {
     const { newPassword } = adminChangePasswordDto;
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    const affectedRows = await this.adminRepository.updatePassword(userIdx, hashedPassword);
+    const affectedRows = await this.adminRepository.updatePassword(
+      userIdx,
+      hashedPassword,
+    );
     if (affectedRows === 0) {
       throw new NotFoundException(`User with ID ${userIdx} not found.`);
     }
