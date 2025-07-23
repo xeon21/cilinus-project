@@ -1,5 +1,19 @@
-import { Controller, Get, Post, Param, Body, UseGuards, Logger } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  UseGuards,
+  Logger,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { EslDeviceService } from './esl-device.service';
 import { DeviceStatus } from '../dto/esl-device.dto';
@@ -28,8 +42,16 @@ export class EslDeviceController {
         type: 'object',
         properties: {
           deviceId: { type: 'string', description: '디바이스 ID' },
-          status: { type: 'string', enum: ['online', 'offline', 'warning'], description: '디바이스 상태' },
-          lastSeen: { type: 'string', format: 'date-time', description: '마지막 확인 시간' },
+          status: {
+            type: 'string',
+            enum: ['online', 'offline', 'warning'],
+            description: '디바이스 상태',
+          },
+          lastSeen: {
+            type: 'string',
+            format: 'date-time',
+            description: '마지막 확인 시간',
+          },
           uptime: { type: 'number', description: '가동 시간 (밀리초)' },
         },
       },
@@ -52,8 +74,16 @@ export class EslDeviceController {
       type: 'object',
       properties: {
         deviceId: { type: 'string', description: '디바이스 ID' },
-        status: { type: 'string', enum: ['online', 'offline', 'warning'], description: '디바이스 상태' },
-        lastSeen: { type: 'string', format: 'date-time', description: '마지막 확인 시간' },
+        status: {
+          type: 'string',
+          enum: ['online', 'offline', 'warning'],
+          description: '디바이스 상태',
+        },
+        lastSeen: {
+          type: 'string',
+          format: 'date-time',
+          description: '마지막 확인 시간',
+        },
         uptime: { type: 'number', description: '가동 시간 (밀리초)' },
       },
     },
@@ -77,7 +107,9 @@ export class EslDeviceController {
   async testEmail(): Promise<{ success: boolean; message: string }> {
     this.logger.log('Testing email configuration');
     const success = await this.emailService.testEmailConfiguration();
-    const message = success ? '테스트 이메일이 성공적으로 발송되었습니다.' : '이메일 발송에 실패했습니다. 설정을 확인하세요.';
+    const message = success
+      ? '테스트 이메일이 성공적으로 발송되었습니다.'
+      : '이메일 발송에 실패했습니다. 설정을 확인하세요.';
     this.logger.log(`Email test result: ${message}`);
     return { success, message };
   }
@@ -86,14 +118,19 @@ export class EslDeviceController {
   @ApiOperation({ summary: '시스템 메시지 브로드캐스트' })
   @ApiResponse({ status: 200, description: '메시지 브로드캐스트 성공' })
   broadcastSystemMessage(
-    @Body() payload: { message: string; level?: 'info' | 'warning' | 'error' }
+    @Body() payload: { message: string; level?: 'info' | 'warning' | 'error' },
   ): { success: boolean; message: string } {
     const { message, level = 'info' } = payload;
-    this.logger.log(`Broadcasting system message: ${message} (level: ${level})`);
+    this.logger.log(
+      `Broadcasting system message: ${message} (level: ${level})`,
+    );
     this.logger.debug(`Broadcast payload: ${JSON.stringify(payload)}`);
-    
+
     this.eslDeviceService.broadcastSystemMessage(message, level);
-    return { success: true, message: '시스템 메시지가 브로드캐스트되었습니다.' };
+    return {
+      success: true,
+      message: '시스템 메시지가 브로드캐스트되었습니다.',
+    };
   }
 
   @Post('broadcast/store/:storeId')
@@ -102,25 +139,33 @@ export class EslDeviceController {
   @ApiResponse({ status: 200, description: '매장 브로드캐스트 성공' })
   async broadcastToStore(
     @Param('storeId') storeId: string,
-    @Body() payload: { eventName: string; data: any }
+    @Body() payload: { eventName: string; data: any },
   ): Promise<{ success: boolean; message: string }> {
     const { eventName, data } = payload;
     this.logger.log(`Broadcasting to store ${storeId}: ${eventName}`);
     this.logger.debug(`Store broadcast data: ${JSON.stringify(data)}`);
-    
+
     await this.eslDeviceService.broadcastToStore(storeId, eventName, data);
-    return { success: true, message: `매장 ${storeId}에 브로드캐스트되었습니다.` };
+    return {
+      success: true,
+      message: `매장 ${storeId}에 브로드캐스트되었습니다.`,
+    };
   }
 
   @Post('broadcast/emergency')
   @ApiOperation({ summary: '긴급 알림 브로드캐스트' })
   @ApiResponse({ status: 200, description: '긴급 알림 브로드캐스트 성공' })
   broadcastEmergency(
-    @Body() alert: { title: string; message: string; severity: 'high' | 'critical' }
+    @Body()
+    alert: {
+      title: string;
+      message: string;
+      severity: 'high' | 'critical';
+    },
   ): { success: boolean; message: string } {
     this.logger.warn(`Broadcasting emergency alert: ${alert.title}`);
     this.logger.debug(`Emergency alert details: ${JSON.stringify(alert)}`);
-    
+
     this.eslDeviceService.broadcastEmergencyAlert(alert);
     return { success: true, message: '긴급 알림이 브로드캐스트되었습니다.' };
   }

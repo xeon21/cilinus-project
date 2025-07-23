@@ -25,7 +25,7 @@ export class ResourceController {
   })
   @ApiResponse({ status: 500, description: '서버 내부 오류' })
   async getHistory() {
-    this.logger.log('GET /resource/history - 리소스 사용 기록 조회 요청');
+    //this.logger.log('GET /resource/history - 리소스 사용 기록 조회 요청');
 
     const resourceHistory = await this.resourceService.getResourceHistory();
 

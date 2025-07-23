@@ -29,6 +29,8 @@ export interface DeviceInfo {
   isAlive: boolean;
   connectedAt: Date;
   metadata?: any;
+  // 동시성 문제 해결을 위한 버전 필드 추가
+  version?: number;
 }
 
 export interface DeviceStatus {

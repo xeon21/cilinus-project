@@ -10,4 +10,3 @@ import { MysqlProvider } from '../database/mysql.provider';
   exports: [DeviceStatusService],
 })
 export class DeviceStatusModule {}
-

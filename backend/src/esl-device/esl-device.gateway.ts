@@ -40,7 +40,7 @@ export class EslDeviceGateway
   afterInit(server: Server) {
     this.logger.log('ESL Device WebSocket Gateway initialized');
     this.eslDeviceService.setServer(server);
-    
+
     // Socket.IO 서버 설정
     server.setMaxListeners(this.MAX_CONNECTIONS);
   }
@@ -48,10 +48,12 @@ export class EslDeviceGateway
   handleConnection(client: Socket) {
     // 최대 연결 수 체크
     if (this.connectionCount >= this.MAX_CONNECTIONS) {
-      this.logger.warn(`Connection rejected - Max connections (${this.MAX_CONNECTIONS}) reached`);
+      this.logger.warn(
+        `Connection rejected - Max connections (${this.MAX_CONNECTIONS}) reached`,
+      );
       client.emit('error', {
         message: 'Server is at maximum capacity',
-        code: 'MAX_CONNECTIONS_REACHED'
+        code: 'MAX_CONNECTIONS_REACHED',
       });
       client.disconnect();
       return;
@@ -60,10 +62,12 @@ export class EslDeviceGateway
     this.connectionCount++;
     const clientId = client.id;
     const query = client.handshake.query;
-    
-    this.logger.log(`Client connected: ${clientId} (Total: ${this.connectionCount})`);
+
+    this.logger.log(
+      `Client connected: ${clientId} (Total: ${this.connectionCount})`,
+    );
     this.logger.debug(`Connection query params: ${JSON.stringify(query)}`);
-    
+
     client.emit('connected', {
       message: 'Successfully connected to ESL Device WebSocket',
       socketId: clientId,
@@ -74,72 +78,102 @@ export class EslDeviceGateway
   handleDisconnect(client: Socket) {
     this.connectionCount--;
     const clientId = client.id;
-    this.logger.log(`Client disconnected: ${clientId} (Total: ${this.connectionCount})`);
-    
+    this.logger.log(
+      `Client disconnected: ${clientId} (Total: ${this.connectionCount})`,
+    );
+
     this.eslDeviceService.handleDeviceDisconnect(clientId);
   }
 
   @SubscribeMessage('register')
-  handleRegister(
+  async handleRegister(
     @MessageBody() data: { deviceId: string; metadata?: any },
     @ConnectedSocket() client: Socket,
   ) {
     const { deviceId, metadata } = data;
     const socketId = client.id;
-    
-    this.logger.log(`Device registration - DeviceId: ${deviceId}, SocketId: ${socketId}`);
+
+    this.logger.log(
+      `Device registration - DeviceId: ${deviceId}, SocketId: ${socketId}`,
+    );
     this.logger.debug(`Registration data: ${JSON.stringify(data)}`);
-    
-    const result = this.eslDeviceService.registerDevice(deviceId, socketId, metadata);
-    
+
+    const result = await this.eslDeviceService.registerDevice(
+      deviceId,
+      socketId,
+      metadata,
+    );
+
     client.emit('registered', {
       success: result,
       deviceId,
       socketId,
     });
-    
+
     return { success: result };
   }
 
   @SubscribeMessage('heartbeat')
-  handleHeartbeat(
+  async handleHeartbeat(
     @MessageBody() heartbeatData: HeartbeatDto,
     @ConnectedSocket() client: Socket,
   ) {
     const socketId = client.id;
-    
-    this.logger.debug(`Heartbeat received - DeviceId: ${heartbeatData.deviceId}, SocketId: ${socketId}`);
+    const receiveTime = new Date();
+
+    this.logger.debug(
+      `Heartbeat received - DeviceId: ${heartbeatData.deviceId}, SocketId: ${socketId}, Time: ${receiveTime.toISOString()}`,
+    );
     this.logger.debug(`Heartbeat data: ${JSON.stringify(heartbeatData)}`);
-    
-    const result = this.eslDeviceService.updateHeartbeat(heartbeatData.deviceId, socketId);
-    
+
+    const result = await this.eslDeviceService.updateHeartbeat(
+      heartbeatData.deviceId,
+      socketId,
+    );
+
     if (result) {
       client.emit('heartbeat-ack', {
         received: true,
-        timestamp: new Date().toISOString(),
+        timestamp: receiveTime.toISOString(),
+        deviceId: heartbeatData.deviceId,
+      });
+      this.logger.debug(
+        `Heartbeat acknowledged for device ${heartbeatData.deviceId}`,
+      );
+    } else {
+      this.logger.error(
+        `Heartbeat update failed for device ${heartbeatData.deviceId}`,
+      );
+      client.emit('heartbeat-error', {
+        received: false,
+        timestamp: receiveTime.toISOString(),
+        deviceId: heartbeatData.deviceId,
+        error: 'Failed to update heartbeat',
       });
     }
-    
+
     return { acknowledged: result };
   }
 
   @SubscribeMessage('unregister')
-  handleUnregister(
+  async handleUnregister(
     @MessageBody() data: { deviceId: string },
     @ConnectedSocket() client: Socket,
   ) {
     const { deviceId } = data;
     const socketId = client.id;
-    
-    this.logger.log(`Device unregistration - DeviceId: ${deviceId}, SocketId: ${socketId}`);
-    
-    const result = this.eslDeviceService.unregisterDevice(deviceId);
-    
+
+    this.logger.log(
+      `Device unregistration - DeviceId: ${deviceId}, SocketId: ${socketId}`,
+    );
+
+    const result = await this.eslDeviceService.unregisterDevice(deviceId);
+
     client.emit('unregistered', {
       success: result,
       deviceId,
     });
-    
+
     return { success: result };
   }
 
@@ -149,16 +183,16 @@ export class EslDeviceGateway
     @ConnectedSocket() client: Socket,
   ) {
     const { deviceId } = data;
-    
+
     if (deviceId) {
       const status = this.eslDeviceService.getDeviceStatus(deviceId);
       return { status };
     } else {
       const allStatuses = this.eslDeviceService.getAllDeviceStatuses();
-      return { 
+      return {
         statuses: allStatuses,
         connectionCount: this.connectionCount,
-        maxConnections: this.MAX_CONNECTIONS
+        maxConnections: this.MAX_CONNECTIONS,
       };
     }
   }

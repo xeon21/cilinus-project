@@ -19,7 +19,8 @@ import { EmailService } from './email.service';
           },
         },
         defaults: {
-          from: process.env.SMTP_FROM || '"Cilinus System" <no-reply@cilinus.com>',
+          from:
+            process.env.SMTP_FROM || '"Cilinus System" <no-reply@cilinus.com>',
         },
       }),
     }),

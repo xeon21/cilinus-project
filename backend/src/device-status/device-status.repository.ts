@@ -132,15 +132,21 @@ export class DeviceStatusRepository {
       const rows = await this.db.executeQuery<any[]>(query, params);
 
       if (rows && rows.length > 0) {
-        this.logger.log(`Found ${rows.length} price tag details for device ID: ${deviceId}`);
+        this.logger.log(
+          `Found ${rows.length} price tag details for device ID: ${deviceId}`,
+        );
         this.logger.debug(`Price tag details data: ${JSON.stringify(rows)}`);
       } else {
-        this.logger.warn(`No price tag details found for device ID: ${deviceId}`);
+        this.logger.warn(
+          `No price tag details found for device ID: ${deviceId}`,
+        );
       }
 
       return rows;
     } catch (error) {
-      this.logger.error(`Error in findPriceTagDetailByDeviceId: ${error.message}`);
+      this.logger.error(
+        `Error in findPriceTagDetailByDeviceId: ${error.message}`,
+      );
       throw error;
     }
   }
@@ -156,4 +162,3 @@ export class DeviceStatusRepository {
     return finalQuery;
   }
 }
-

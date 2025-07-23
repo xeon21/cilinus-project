@@ -16,7 +16,11 @@ import {
   ApiQuery,
   ApiParam,
 } from '@nestjs/swagger';
-import { DeviceStatusDto, DeviceDetailDto, PriceTagDetailDto } from 'src/dto/device-status.dto';
+import {
+  DeviceStatusDto,
+  DeviceDetailDto,
+  PriceTagDetailDto,
+} from 'src/dto/device-status.dto';
 
 @ApiTags('device-status')
 @Controller('device-status')
@@ -99,7 +103,8 @@ export class DeviceStatusController {
   })
   @ApiResponse({
     status: 404,
-    description: 'Price tag details not found (deprecated - now returns empty array)',
+    description:
+      'Price tag details not found (deprecated - now returns empty array)',
   })
   @ApiParam({ name: 'deviceId', description: 'Device ID' })
   async getPriceTagDetail(
@@ -110,10 +115,11 @@ export class DeviceStatusController {
 
     const result = await this.deviceStatusService.getPriceTagDetail(deviceId);
 
-    this.logger.log(`Successfully retrieved price tag detail for deviceId: ${deviceId}`);
+    this.logger.log(
+      `Successfully retrieved price tag detail for deviceId: ${deviceId}`,
+    );
     this.logger.debug(`Response - price tag detail: ${JSON.stringify(result)}`);
 
     return result;
   }
 }
-

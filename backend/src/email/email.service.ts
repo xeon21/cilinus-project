@@ -20,20 +20,27 @@ export class EmailService {
     private readonly configService: ConfigService,
   ) {
     // 관리자 이메일은 환경변수에서 콤마로 구분된 목록으로 가져옴
-    const adminEmailsStr = this.configService.get<string>('ADMIN_EMAILS', 'admin@cilinus.com');
-    this.adminEmails = adminEmailsStr.split(',').map(email => email.trim());
-    
-    this.logger.log(`Email service initialized. Admin emails: ${this.adminEmails.join(', ')}`);
+    const adminEmailsStr = this.configService.get<string>(
+      'ADMIN_EMAILS',
+      'admin@cilinus.com',
+    );
+    this.adminEmails = adminEmailsStr.split(',').map((email) => email.trim());
+
+    this.logger.log(
+      `Email service initialized. Admin emails: ${this.adminEmails.join(', ')}`,
+    );
   }
 
   async sendDeviceFailureAlert(data: DeviceFailureAlertData): Promise<boolean> {
     try {
       const { deviceId, reason, lastSeen, failureTime, metadata } = data;
-      
+
       const subject = `[긴급] ESL 디바이스 장애 알림 - ${deviceId}`;
       const reasonText = reason === 'timeout' ? '응답 시간 초과' : '연결 끊김';
-      const downtime = Math.floor((failureTime.getTime() - lastSeen.getTime()) / 1000);
-      
+      const downtime = Math.floor(
+        (failureTime.getTime() - lastSeen.getTime()) / 1000,
+      );
+
       const html = `
         <!DOCTYPE html>
         <html>
@@ -112,12 +119,16 @@ export class EmailService {
                   <th>다운타임</th>
                   <td>${downtime}초</td>
                 </tr>
-                ${metadata ? `
+                ${
+                  metadata
+                    ? `
                 <tr>
                   <th>추가 정보</th>
                   <td>${JSON.stringify(metadata, null, 2)}</td>
                 </tr>
-                ` : ''}
+                `
+                    : ''
+                }
               </table>
               
               <p style="margin-top: 20px;">
@@ -152,7 +163,9 @@ ESL 디바이스 장애 알림
 3. 필요시 디바이스를 재시작하세요.
       `;
 
-      this.logger.log(`Sending device failure alert email for device: ${deviceId}`);
+      this.logger.log(
+        `Sending device failure alert email for device: ${deviceId}`,
+      );
       this.logger.debug(`Email recipients: ${this.adminEmails.join(', ')}`);
       this.logger.debug(`Email content - Subject: ${subject}`);
 
@@ -163,10 +176,14 @@ ESL 디바이스 장애 알림
         html,
       });
 
-      this.logger.log(`Device failure alert email sent successfully for device: ${deviceId}`);
+      this.logger.log(
+        `Device failure alert email sent successfully for device: ${deviceId}`,
+      );
       return true;
     } catch (error) {
-      this.logger.error(`Failed to send device failure alert email: ${error.message}`);
+      this.logger.error(
+        `Failed to send device failure alert email: ${error.message}`,
+      );
       this.logger.error(error.stack);
       return false;
     }
@@ -174,7 +191,8 @@ ESL 디바이스 장애 알림
 
   async testEmailConfiguration(): Promise<boolean> {
     try {
-      const testSubject = '[테스트] Cilinus ESL 모니터링 시스템 이메일 설정 확인';
+      const testSubject =
+        '[테스트] Cilinus ESL 모니터링 시스템 이메일 설정 확인';
       const testHtml = `
         <h2>이메일 설정 테스트</h2>
         <p>이 메일은 Cilinus ESL 모니터링 시스템의 이메일 설정을 확인하기 위한 테스트 메일입니다.</p>

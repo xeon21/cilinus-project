@@ -1,6 +1,10 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DeviceStatusRepository } from './device-status.repository';
-import { DeviceStatusDto, DeviceDetailDto, PriceTagDetailDto } from 'src/dto/device-status.dto';
+import {
+  DeviceStatusDto,
+  DeviceDetailDto,
+  PriceTagDetailDto,
+} from 'src/dto/device-status.dto';
 
 @Injectable()
 export class DeviceStatusService {
@@ -81,28 +85,37 @@ export class DeviceStatusService {
       this.logger.log(`Fetching price tag detail for device ID: ${deviceId}`);
       this.logger.debug(`Request received - deviceId: ${deviceId}`);
 
-      const priceTagDetails = await this.deviceStatusRepository.findPriceTagDetailByDeviceId(deviceId);
+      const priceTagDetails =
+        await this.deviceStatusRepository.findPriceTagDetailByDeviceId(
+          deviceId,
+        );
 
       if (!priceTagDetails || priceTagDetails.length === 0) {
-        this.logger.warn(`No price tag details found for device ID: ${deviceId}`);
+        this.logger.warn(
+          `No price tag details found for device ID: ${deviceId}`,
+        );
         return [];
       }
 
-      const results: PriceTagDetailDto[] = priceTagDetails.map((priceTag: any) => ({
-        deviceId: priceTag.device_id || '',
-        productName: priceTag.product_name || '',
-        productDescription: priceTag.product_description || '',
-        currentPrice: priceTag.current_price || 0,
-        originalPrice: priceTag.original_price || 0,
-        isPromotion: priceTag.is_promotion || false,
-        promotionEndDate: priceTag.promotion_end_date || null,
-        tagName: priceTag.tag_name || '',
-        tagCategory: priceTag.tag_category || '',
-      }));
+      const results: PriceTagDetailDto[] = priceTagDetails.map(
+        (priceTag: any) => ({
+          deviceId: priceTag.device_id || '',
+          productName: priceTag.product_name || '',
+          productDescription: priceTag.product_description || '',
+          currentPrice: priceTag.current_price || 0,
+          originalPrice: priceTag.original_price || 0,
+          isPromotion: priceTag.is_promotion || false,
+          promotionEndDate: priceTag.promotion_end_date || null,
+          tagName: priceTag.tag_name || '',
+          tagCategory: priceTag.tag_category || '',
+        }),
+      );
 
-      this.logger.log(`Successfully retrieved ${results.length} price tag details for device ID: ${deviceId}`);
+      this.logger.log(
+        `Successfully retrieved ${results.length} price tag details for device ID: ${deviceId}`,
+      );
       this.logger.debug(`Response data: ${JSON.stringify(results)}`);
-      
+
       return results;
     } catch (error) {
       this.logger.error(`Error fetching price tag detail: ${error.message}`);
@@ -110,4 +123,3 @@ export class DeviceStatusService {
     }
   }
 }
-

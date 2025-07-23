@@ -59,7 +59,11 @@ export class PriceTagDetailDto {
   @ApiProperty({ example: 'DEV-001', description: 'Device unique identifier' })
   deviceId: string;
 
-  @ApiProperty({ example: 'Premium Coffee Beans', description: 'Product name', nullable: true })
+  @ApiProperty({
+    example: 'Premium Coffee Beans',
+    description: 'Product name',
+    nullable: true,
+  })
   productName: string;
 
   @ApiProperty({
@@ -72,7 +76,11 @@ export class PriceTagDetailDto {
   @ApiProperty({ example: 12500, description: 'Current price', nullable: true })
   currentPrice: number;
 
-  @ApiProperty({ example: 15000, description: 'Original price', nullable: true })
+  @ApiProperty({
+    example: 15000,
+    description: 'Original price',
+    nullable: true,
+  })
   originalPrice: number;
 
   @ApiProperty({ example: true, description: 'Whether promotion is active' })
@@ -85,10 +93,17 @@ export class PriceTagDetailDto {
   })
   promotionEndDate: string | null;
 
-  @ApiProperty({ example: 'Sale Template', description: 'Tag template name', nullable: true })
+  @ApiProperty({
+    example: 'Sale Template',
+    description: 'Tag template name',
+    nullable: true,
+  })
   tagName: string;
 
-  @ApiProperty({ example: 'Food & Beverage', description: 'Tag category', nullable: true })
+  @ApiProperty({
+    example: 'Food & Beverage',
+    description: 'Tag category',
+    nullable: true,
+  })
   tagCategory: string;
 }
-
