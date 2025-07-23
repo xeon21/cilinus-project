@@ -12,10 +12,18 @@ export interface SortConfig<T> {
 /**
  * 테이블 데이터 정렬을 위한 커스텀 훅
  * @param data - 정렬할 데이터 배열
+ * @param initialSortKey - 초기 정렬 키 (선택사항)
+ * @param initialDirection - 초기 정렬 방향 (선택사항, 기본값: ascending)
  * @returns 정렬된 데이터와 정렬 관련 함수들
  */
-export function useSort<T extends Record<string, unknown>>(data: T[]) {
-  const [sortConfig, setSortConfig] = useState<SortConfig<T> | null>(null);
+export function useSort<T extends Record<string, unknown>>(
+  data: T[], 
+  initialSortKey?: keyof T,
+  initialDirection: SortDirection = 'ascending'
+) {
+  const [sortConfig, setSortConfig] = useState<SortConfig<T> | null>(
+    initialSortKey ? { key: initialSortKey, direction: initialDirection } : null
+  );
 
   // 정렬된 데이터 계산
   const sortedData = useMemo(() => {

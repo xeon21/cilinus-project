@@ -51,11 +51,22 @@ export default function StatusHistoryChart({ history }: { history: ResourceLog[]
   const brushRangeRef = useRef<{ minutesFromEnd?: number; duration?: number }>({});
   const isInitializedRef = useRef(false);
 
-  const data = history.map(log => ({
-    time: new Date(log.timestamp).getTime(),
-    memory: log.memory,
-    disk: log.disk
-  }));
+  // 중복 제거 및 시간순 정렬
+  const uniqueTimestamps = new Set<number>();
+  const data = history
+    .map(log => ({
+      time: new Date(log.timestamp).getTime(),
+      memory: log.memory,
+      disk: log.disk
+    }))
+    .filter(item => {
+      if (uniqueTimestamps.has(item.time)) {
+        return false;
+      }
+      uniqueTimestamps.add(item.time);
+      return true;
+    })
+    .sort((a, b) => a.time - b.time);
 
   // 초기 인덱스 계산 또는 저장된 범위로 인덱스 계산
   const getInitialIndices = () => {
@@ -121,6 +132,8 @@ export default function StatusHistoryChart({ history }: { history: ResourceLog[]
             tickFormatter={timeFormatter}
             stroke="#95a5a6"
             fontSize={12}
+            interval="preserveStartEnd"
+            allowDuplicatedCategory={false}
           />
           <YAxis 
             yAxisId="left" 

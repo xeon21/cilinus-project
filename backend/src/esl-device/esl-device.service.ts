@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { Server } from 'socket.io';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { DeviceInfo, DeviceStatus } from '../dto/esl-device.dto';
 import { EmailService } from '../email/email.service';
 import { EslDeviceRepository } from './esl-device.repository';
+import { FrontendWebSocketGateway } from '../frontend-websocket/frontend-websocket.gateway';
 
 @Injectable()
 export class EslDeviceService {
@@ -22,10 +23,21 @@ export class EslDeviceService {
   constructor(
     private readonly emailService: EmailService,
     private readonly eslDeviceRepository: EslDeviceRepository,
+    @Inject(forwardRef(() => FrontendWebSocketGateway))
+    private readonly frontendWebSocketGateway: FrontendWebSocketGateway,
   ) {}
 
   setServer(server: Server) {
     this.server = server;
+  }
+
+  getDeviceIdBySocketId(socketId: string): string | null {
+    for (const [deviceId, deviceInfo] of this.devices.entries()) {
+      if (deviceInfo.socketId === socketId) {
+        return deviceId;
+      }
+    }
+    return null;
   }
 
   async registerDevice(
@@ -146,11 +158,15 @@ export class EslDeviceService {
 
       // 배치 처리를 위해 메모리에 저장 (즉시 DB 업데이트하지 않음)
       this.heartbeatBatch.set(deviceId, updatedDevice.lastHeartbeat);
-      
+
       // 마지막 DB 업데이트로부터 일정 시간 이상 지났을 때만 즉시 업데이트 (중요한 경우)
       const lastUpdate = this.lastDbUpdate.get(deviceId);
       const now = new Date();
-      if (!lastUpdate || now.getTime() - lastUpdate.getTime() > this.HEARTBEAT_MIN_UPDATE_INTERVAL_MS) {
+      if (
+        !lastUpdate ||
+        now.getTime() - lastUpdate.getTime() >
+          this.HEARTBEAT_MIN_UPDATE_INTERVAL_MS
+      ) {
         await this.eslDeviceRepository.updateDeviceHeartbeat(deviceId);
         this.lastDbUpdate.set(deviceId, now);
       }
@@ -254,31 +270,28 @@ export class EslDeviceService {
     const updates = Array.from(this.heartbeatBatch.entries());
     this.heartbeatBatch.clear();
 
-    this.logger.log(
-      `Flushing heartbeat batch: ${batchSize} devices to update`,
-    );
+    this.logger.log(`Flushing heartbeat batch: ${batchSize} devices to update`);
 
     // \ubaa8\ub4e0 deviceId \ucd94\ucd9c
     const deviceIds = updates.map(([deviceId]) => deviceId);
-    
+
     // \ub9c8\uc9c0\ub9c9 DB \uc5c5\ub370\uc774\ud2b8 \uc2dc\uac04 \uae30\ub85d
     const now = new Date();
-    deviceIds.forEach(deviceId => {
+    deviceIds.forEach((deviceId) => {
       this.lastDbUpdate.set(deviceId, now);
     });
 
     try {
       // \ud55c \ubc88\uc758 \ucffc\ub9ac\ub85c \ubaa8\ub4e0 \ub514\ubc14\uc774\uc2a4 \uc5c5\ub370\uc774\ud2b8
-      const affectedRows = await this.eslDeviceRepository.updateHeartbeatsBatch(deviceIds);
-      
+      const affectedRows =
+        await this.eslDeviceRepository.updateHeartbeatsBatch(deviceIds);
+
       this.logger.log(
         `Heartbeat batch flush completed: ${affectedRows}/${batchSize} devices updated`,
       );
     } catch (error) {
-      this.logger.error(
-        `Failed to flush heartbeat batch: ${error.message}`,
-      );
-      
+      this.logger.error(`Failed to flush heartbeat batch: ${error.message}`);
+
       // \uc2e4\ud328 \uc2dc \uac1c\ubcc4 \uc5c5\ub370\uc774\ud2b8\ub85c \ud3f4\ubc31
       for (const [deviceId] of updates) {
         await this.eslDeviceRepository
@@ -346,6 +359,22 @@ export class EslDeviceService {
                 );
               });
 
+            // 허트비트 타임아웃 시 프론트엔드에 전달
+            const broadcastData = {
+              deviceId,
+              status: 'error',
+              timestamp: now.toISOString(),
+              eventType: 'heartbeat-timeout',
+              reason: 'timeout',
+              lastHeartbeat: device.lastHeartbeat.toISOString(),
+            };
+
+            this.notifyFrontend('device-status-changed', broadcastData);
+
+            this.logger.log(
+              `Heartbeat timeout event sent to frontend: ${JSON.stringify(broadcastData)}`,
+            );
+
             this.handleDeviceFailure(deviceId, 'timeout');
             hasFailures = true;
           } else {
@@ -403,14 +432,12 @@ export class EslDeviceService {
         metadata: device.metadata,
       });
 
-      // WebSocket으로 장애 알림 브로드캐스트
-      if (this.server) {
-        this.server.emit('device-failure', {
-          deviceId,
-          reason,
-          timestamp: failureTime.toISOString(),
-        });
-      }
+      // 프론트엔드에 장애 알림 전달
+      this.notifyFrontend('device-failure', {
+        deviceId,
+        reason,
+        timestamp: failureTime.toISOString(),
+      });
     } catch (error) {
       this.logger.error(
         `Failed to handle device failure for ${deviceId}: ${error.message}`,
@@ -419,17 +446,62 @@ export class EslDeviceService {
   }
 
   /**
-   * 모든 클라이언트에게 시스템 메시지 브로드캐스트
+   * 프론트엔드 클라이언트에게 이벤트 전달
+   */
+  notifyFrontend(eventName: string, data: any) {
+    try {
+      this.frontendWebSocketGateway.broadcastDeviceEvent(eventName, data);
+    } catch (error) {
+      this.logger.error(
+        `Failed to notify frontend - Event: ${eventName}, Error: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * 특정 디바이스에게 메시지 전송
+   */
+  sendToDevice(deviceId: string, eventName: string, data: any): boolean {
+    const device = this.devices.get(deviceId);
+    if (!device || !this.server) {
+      this.logger.warn(`Cannot send to device ${deviceId}: device not found or server not initialized`);
+      return false;
+    }
+
+    try {
+      this.server.to(device.socketId).emit(eventName, data);
+      this.logger.log(`Message sent to device ${deviceId} - Event: ${eventName}, Data: ${JSON.stringify(data)}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to send message to device ${deviceId}: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * 모든 연결된 디바이스에게 브로드캐스트
+   */
+  broadcastToAll(eventName: string, data: any): void {
+    if (!this.server) {
+      this.logger.warn('Cannot broadcast: server not initialized');
+      return;
+    }
+
+    try {
+      this.server.emit(eventName, data);
+      this.logger.log(`Broadcast sent to all devices - Event: ${eventName}, Data: ${JSON.stringify(data)}`);
+    } catch (error) {
+      this.logger.error(`Failed to broadcast to all devices: ${error.message}`);
+    }
+  }
+
+  /**
+   * 프론트엔드에 시스템 메시지 전달
    */
   broadcastSystemMessage(
     message: string,
     level: 'info' | 'warning' | 'error' = 'info',
   ) {
-    if (!this.server) {
-      this.logger.warn('Server not initialized, cannot broadcast');
-      return;
-    }
-
     const systemMessage = {
       type: 'SYSTEM_MESSAGE',
       level,
@@ -438,15 +510,15 @@ export class EslDeviceService {
     };
 
     this.logger.log(
-      `Broadcasting system message: ${message} (level: ${level})`,
+      `Sending system message to frontend: ${message} (level: ${level})`,
     );
 
-    // 모든 연결된 클라이언트에게 전송
-    this.server.emit('system-message', systemMessage);
+    // 프론트엔드 클라이언트에게만 전송
+    this.frontendWebSocketGateway.broadcastSystemMessage(systemMessage);
   }
 
   /**
-   * 특정 매장의 디바이스들에게만 브로드캐스트
+   * 특정 매장의 디바이스들에게만 메시지 전송
    */
   async broadcastToStore(storeId: string, eventName: string, data: any) {
     if (!this.server) {
@@ -458,10 +530,10 @@ export class EslDeviceService {
     );
 
     this.logger.log(
-      `Broadcasting to store ${storeId}: ${storeDevices.length} devices`,
+      `Sending to store ${storeId} devices: ${storeDevices.length} devices`,
     );
 
-    // 해당 매장의 디바이스들에게만 전송
+    // 해당 매장의 디바이스들에게만 전송 (디바이스 소켓)
     for (const [deviceId, device] of storeDevices) {
       this.server.to(device.socketId).emit(eventName, {
         ...data,
@@ -469,20 +541,23 @@ export class EslDeviceService {
         timestamp: new Date().toISOString(),
       });
     }
+
+    // 프론트엔드에도 알림
+    this.notifyFrontend(eventName, {
+      ...data,
+      targetStore: storeId,
+      deviceCount: storeDevices.length,
+    });
   }
 
   /**
-   * 디바이스 상태 변경 브로드캐스트
+   * 디바이스 상태 변경을 프론트엔드에 알림
    */
   broadcastDeviceStatusChange(
     deviceId: string,
     oldStatus: string,
     newStatus: string,
   ) {
-    if (!this.server) {
-      return;
-    }
-
     const statusChange = {
       type: 'DEVICE_STATUS_CHANGE',
       deviceId,
@@ -492,25 +567,21 @@ export class EslDeviceService {
     };
 
     this.logger.log(
-      `Broadcasting device status change: ${deviceId} ${oldStatus} -> ${newStatus}`,
+      `Sending device status change to frontend: ${deviceId} ${oldStatus} -> ${newStatus}`,
     );
 
-    // 모든 클라이언트에게 상태 변경 알림
-    this.server.emit('device-status-changed', statusChange);
+    // 프론트엔드에만 상태 변경 알림
+    this.notifyFrontend('device-status-changed', statusChange);
   }
 
   /**
-   * 대량 업데이트 알림 (청크 단위)
+   * 대량 업데이트를 프론트엔드에 알림 (청크 단위)
    */
   async broadcastBulkUpdate(updates: any[], chunkSize: number = 50) {
-    if (!this.server) {
-      return;
-    }
-
     const totalChunks = Math.ceil(updates.length / chunkSize);
 
     this.logger.log(
-      `Broadcasting bulk update: ${updates.length} items in ${totalChunks} chunks`,
+      `Sending bulk update to frontend: ${updates.length} items in ${totalChunks} chunks`,
     );
 
     for (let i = 0; i < totalChunks; i++) {
@@ -518,14 +589,17 @@ export class EslDeviceService {
       const end = Math.min(start + chunkSize, updates.length);
       const chunk = updates.slice(start, end);
 
-      this.server.emit('bulk-update-chunk', {
+      const chunkData = {
         chunkIndex: i,
         totalChunks,
         chunkSize: chunk.length,
         data: chunk,
         isLastChunk: i === totalChunks - 1,
         timestamp: new Date().toISOString(),
-      });
+      };
+
+      // 프론트엔드에 전달
+      this.notifyFrontend('bulk-update-chunk', chunkData);
 
       // 과부하 방지를 위한 짧은 딜레이
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -533,17 +607,13 @@ export class EslDeviceService {
   }
 
   /**
-   * 긴급 알림 브로드캐스트 (volatile - 오프라인 클라이언트 무시)
+   * 긴급 알림을 프론트엔드에 전달
    */
   broadcastEmergencyAlert(alert: {
     title: string;
     message: string;
     severity: 'high' | 'critical';
   }) {
-    if (!this.server) {
-      return;
-    }
-
     const emergencyAlert = {
       type: 'EMERGENCY_ALERT',
       ...alert,
@@ -551,9 +621,14 @@ export class EslDeviceService {
       id: `ALERT-${Date.now()}`,
     };
 
-    this.logger.error(`Broadcasting emergency alert: ${alert.title}`);
+    this.logger.error(`Sending emergency alert to frontend: ${alert.title}`);
 
-    // volatile 플래그로 전송 (현재 연결된 클라이언트에게만)
-    this.server.volatile.emit('emergency-alert', emergencyAlert);
+    // 프론트엔드에 긴급 알림 전달
+    this.notifyFrontend('emergency-alert', emergencyAlert);
+
+    // 디바이스 소켓에도 긴급 알림 (필요한 경우)
+    if (this.server) {
+      this.server.volatile.emit('emergency-alert', emergencyAlert);
+    }
   }
 }

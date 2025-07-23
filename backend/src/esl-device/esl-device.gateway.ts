@@ -73,16 +73,86 @@ export class EslDeviceGateway
       socketId: clientId,
       serverTime: new Date().toISOString(),
     });
+
+    // 디바이스 연결 시 프론트엔드 웹소켓으로 이벤트 전달
+    const deviceId = query.deviceId as string;
+    if (deviceId) {
+      const broadcastData = {
+        deviceId,
+        socketId: clientId,
+        status: 'ready',
+        timestamp: new Date().toISOString(),
+        eventType: 'device-connected',
+      };
+
+      // EslDeviceService를 통해 프론트엔드에 전달
+      this.eslDeviceService.notifyFrontend(
+        'device-status-changed',
+        broadcastData,
+      );
+
+      this.logger.log(
+        `Device connected event sent to frontend: ${JSON.stringify(broadcastData)}`,
+      );
+    }
   }
 
   handleDisconnect(client: Socket) {
     this.connectionCount--;
     const clientId = client.id;
+    const query = client.handshake.query;
+    const deviceId = query.deviceId as string;
+
     this.logger.log(
-      `Client disconnected: ${clientId} (Total: ${this.connectionCount})`,
+      `Client disconnected: ${clientId}, DeviceId: ${deviceId || 'N/A'} (Total: ${this.connectionCount})`,
     );
 
+    // handleDeviceDisconnect 호출 - 이 메서드가 디바이스를 찾아서 처리
     this.eslDeviceService.handleDeviceDisconnect(clientId);
+
+    // 디바이스 ID가 query에 있거나 서비스에서 찾을 수 있는 경우 프론트엔드에 전달
+    if (deviceId) {
+      const broadcastData = {
+        deviceId: deviceId,
+        socketId: clientId,
+        status: 'inactive',
+        timestamp: new Date().toISOString(),
+        eventType: 'device-disconnected',
+        reason: 'socket-disconnect',
+      };
+
+      this.eslDeviceService.notifyFrontend(
+        'device-status-changed',
+        broadcastData,
+      );
+
+      this.logger.log(
+        `Device disconnected event sent to frontend: ${JSON.stringify(broadcastData)}`,
+      );
+    } else {
+      // deviceId가 query에 없는 경우, 서비스에서 찾아보기
+      const disconnectedDeviceId =
+        this.eslDeviceService.getDeviceIdBySocketId(clientId);
+      if (disconnectedDeviceId) {
+        const broadcastData = {
+          deviceId: disconnectedDeviceId,
+          socketId: clientId,
+          status: 'inactive',
+          timestamp: new Date().toISOString(),
+          eventType: 'device-disconnected',
+          reason: 'socket-disconnect',
+        };
+
+        this.eslDeviceService.notifyFrontend(
+          'device-status-changed',
+          broadcastData,
+        );
+
+        this.logger.log(
+          `Device disconnected event sent to frontend (found by socketId): ${JSON.stringify(broadcastData)}`,
+        );
+      }
+    }
   }
 
   @SubscribeMessage('register')
@@ -109,6 +179,30 @@ export class EslDeviceGateway
       deviceId,
       socketId,
     });
+
+    // 디바이스 등록 시 room에 join
+    if (result) {
+      client.join(`device:${deviceId}`);
+      this.logger.log(`Device ${deviceId} joined room: device:${deviceId}`);
+      
+      const broadcastData = {
+        deviceId,
+        socketId,
+        status: 'active',
+        timestamp: new Date().toISOString(),
+        eventType: 'device-registered',
+        metadata,
+      };
+
+      this.eslDeviceService.notifyFrontend(
+        'device-status-changed',
+        broadcastData,
+      );
+
+      this.logger.log(
+        `Device registered event sent to frontend: ${JSON.stringify(broadcastData)}`,
+      );
+    }
 
     return { success: result };
   }
@@ -137,8 +231,22 @@ export class EslDeviceGateway
         timestamp: receiveTime.toISOString(),
         deviceId: heartbeatData.deviceId,
       });
-      this.logger.debug(
-        `Heartbeat acknowledged for device ${heartbeatData.deviceId}`,
+
+      // 프론트엔드에 디바이스 상태 업데이트 전달
+      const broadcastData = {
+        deviceId: heartbeatData.deviceId,
+        timestamp: receiveTime.toISOString(),
+        status: 'online',
+        data: heartbeatData.data,
+      };
+
+      this.eslDeviceService.notifyFrontend(
+        'device-heartbeat-received',
+        broadcastData,
+      );
+
+      this.logger.log(
+        `Heartbeat acknowledged and sent to frontend for device ${heartbeatData.deviceId}. Data: ${JSON.stringify(broadcastData)}`,
       );
     } else {
       this.logger.error(
@@ -205,5 +313,26 @@ export class EslDeviceGateway
   // 최대 연결 수 조회 메서드
   getMaxConnections(): number {
     return this.MAX_CONNECTIONS;
+  }
+
+  /**
+   * 프론트엔드로부터 브로드캐스트 메시지 수신 처리
+   * 프론트엔드 게이트웨이에서 전달된 메시지를 ESL 디바이스가 수신
+   */
+  @SubscribeMessage('frontend-broadcast')
+  handleFrontendBroadcast(
+    @MessageBody() data: any,
+    @ConnectedSocket() client: Socket,
+  ) {
+    this.logger.log(
+      `ESL Device received frontend broadcast - SocketId: ${client.id}, Data: ${JSON.stringify(data)}`,
+    );
+
+    // ESL 디바이스는 브로드캐스트를 받기만 하므로 별도 처리 없음
+    // 필요시 디바이스에서 추가 처리 가능
+    return {
+      received: true,
+      timestamp: new Date().toISOString(),
+    };
   }
 }

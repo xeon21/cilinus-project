@@ -6,6 +6,8 @@ import {
   Body,
   UseGuards,
   Logger,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,6 +20,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { EslDeviceService } from './esl-device.service';
 import { DeviceStatus } from '../dto/esl-device.dto';
 import { EmailService } from '../email/email.service';
+import { FrontendWebSocketGateway } from '../frontend-websocket/frontend-websocket.gateway';
 
 @ApiTags('ESL Device')
 @Controller('api/esl-device')
@@ -29,6 +32,8 @@ export class EslDeviceController {
   constructor(
     private readonly eslDeviceService: EslDeviceService,
     private readonly emailService: EmailService,
+    @Inject(forwardRef(() => FrontendWebSocketGateway))
+    private readonly frontendWebSocketGateway: FrontendWebSocketGateway,
   ) {}
 
   @Get('status')
@@ -168,5 +173,59 @@ export class EslDeviceController {
 
     this.eslDeviceService.broadcastEmergencyAlert(alert);
     return { success: true, message: '긴급 알림이 브로드캐스트되었습니다.' };
+  }
+
+  @Get('websocket/info')
+  @ApiOperation({ summary: '웹소켓 연결 정보 조회' })
+  @ApiResponse({
+    status: 200,
+    description: '웹소켓 연결 정보',
+    schema: {
+      type: 'object',
+      properties: {
+        device: {
+          type: 'object',
+          properties: {
+            namespace: { type: 'string', example: '/esl-device' },
+            url: { type: 'string', example: 'ws://localhost:3000/esl-device' },
+            totalDevices: { type: 'number', example: 50 },
+          },
+        },
+        frontend: {
+          type: 'object',
+          properties: {
+            namespace: { type: 'string', example: '/frontend' },
+            url: { type: 'string', example: 'ws://localhost:3000/frontend' },
+            totalConnections: { type: 'number', example: 10 },
+            authenticatedUsers: { type: 'number', example: 5 },
+          },
+        },
+        timestamp: {
+          type: 'string',
+          format: 'date-time',
+          example: '2024-01-21T12:00:00Z',
+        },
+      },
+    },
+  })
+  getWebSocketInfo() {
+    this.logger.log('Getting WebSocket connection information');
+    const info = {
+      device: {
+        namespace: '/esl-device',
+        url: `ws://${process.env.HOST || 'localhost'}:3002/esl-device`,
+        totalDevices: this.eslDeviceService.getAllDeviceStatuses().length,
+      },
+      frontend: {
+        namespace: '/frontend',
+        url: `ws://${process.env.HOST || 'localhost'}:3002/frontend`,
+        totalConnections: this.frontendWebSocketGateway.getConnectionCount(),
+        authenticatedUsers:
+          this.frontendWebSocketGateway.getAuthenticatedUserCount(),
+      },
+      timestamp: new Date().toISOString(),
+    };
+    this.logger.debug(`WebSocket info: ${JSON.stringify(info)}`);
+    return info;
   }
 }

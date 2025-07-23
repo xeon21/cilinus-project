@@ -24,5 +24,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
   controllers: [AuthController],
   // [수정] 필요한 모든 Provider를 등록합니다.
   providers: [AuthService, JwtStrategy, AuthRepository, MysqlProvider],
+  exports: [JwtModule], // JwtModule을 export하여 다른 모듈에서 사용 가능하게 함
 })
 export class AuthModule {}

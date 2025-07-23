@@ -13,6 +13,7 @@ import { ResourceModule } from './resource/resource.module'; // [추가]
 import { TagStatusModule } from './tag-status/tag-status.module';
 import { DeviceStatusModule } from './device-status/device-status.module';
 import { EslDeviceModule } from './esl-device/esl-device.module'; // ESL 디바이스 WebSocket 모듈
+import { FrontendWebSocketModule } from './frontend-websocket/frontend-websocket.module'; // 프론트엔드 WebSocket 모듈
 
 @Module({
   //imports: [
@@ -40,6 +41,7 @@ import { EslDeviceModule } from './esl-device/esl-device.module'; // ESL 디바�
     TagStatusModule, // [수정] TagStatusModule만 남김
     DeviceStatusModule,
     EslDeviceModule, // ESL 디바이스 WebSocket 모듈
+    FrontendWebSocketModule, // 프론트엔드 WebSocket 모듈
   ],
 
   controllers: [], // [수정] TagStatusController 제거

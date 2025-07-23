@@ -28,14 +28,18 @@ export class DeviceStatusService {
         status,
       );
 
-      const result = devices.map((device) => ({
-        deviceId: device.device_id,
-        deviceType: device.device_type,
-        storeName: device.store_name,
-        status: device.status,
-        lastUpdate: device.last_update,
-        signal: device.signal_strength,
-      }));
+      const result = devices.map((device) => {
+        this.logger.debug(`Device data: ${JSON.stringify(device)}`);
+        return {
+          deviceId: device.device_id,
+          deviceType: device.device_type,
+          storeName: device.store_name,
+          status: device.status,
+          lastUpdate: device.last_update,
+          signal: device.signal_strength,
+          macAddress: device.mac_address,
+        };
+      });
 
       this.logger.log(`Processed ${result.length} device records`);
       return result;

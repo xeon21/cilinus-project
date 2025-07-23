@@ -112,43 +112,129 @@ const FilterButton = styled.button<{ $reset?: boolean }>`
 `;
 
 const StatusBadge = styled.span<{ $status: string }>`
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 500;
   color: white;
+  text-align: center;
+  min-width: 4.5rem;
   background-color: ${props => {
     switch (props.$status) {
       case 'active': return '#10b981';
       case 'inactive': return '#ef4444';
       case 'maintenance': return '#f59e0b';
+      case 'ready': return '#3b82f6';
+      case 'error': return '#6b7280';
       default: return '#6b7280';
     }
   }};
 `;
 
+const TableRow = styled.tr<{ $isNew?: boolean }>`
+  position: relative;
+  ${props => props.$isNew && `
+    animation: newRowHighlight 2s ease-out;
+    @keyframes newRowHighlight {
+      0% {
+        background-color: #dbeafe;
+      }
+      100% {
+        background-color: transparent;
+      }
+    }
+  `}
+  
+  &:hover {
+    background-color: #f9fafb;
+  }
+`;
+
+const formatDateTime = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  } catch (error) {
+    return dateString;
+  }
+};
+
+const groupStoreNames = (storeNames: string[]): { [key: string]: string[] } => {
+  const groups: { [key: string]: string[] } = {};
+  
+  storeNames.forEach(storeName => {
+    if (!storeName || !storeName.trim()) return;
+    
+    // 스토어 이름에서 그룹 키 추출 (첫 단어 또는 특정 패턴)
+    let groupKey = 'Other';
+    
+    // 예: "Seoul Store", "Seoul Branch" -> "Seoul"
+    // "Gangnam Store", "Gangnam Mall" -> "Gangnam"
+    const words = storeName.split(' ');
+    if (words.length > 0) {
+      const firstWord = words[0];
+      // 첫 단어가 영문자로 시작하거나 한글인 경우 그룹 키로 사용
+      if (/^[A-Za-z가-힣]/.test(firstWord)) {
+        groupKey = firstWord;
+      }
+    }
+    
+    if (!groups[groupKey]) {
+      groups[groupKey] = [];
+    }
+    if (!groups[groupKey].includes(storeName)) {
+      groups[groupKey].push(storeName);
+    }
+  });
+  
+  // 각 그룹 내에서 정렬
+  Object.keys(groups).forEach(key => {
+    groups[key].sort();
+  });
+  
+  return groups;
+};
+
 export interface DeviceStatusData {
-  [key: string]: string | number;
+  [key: string]: string | number | boolean | undefined;
   deviceId: string;
   deviceType: string;
   storeName: string;
   status: string;
   lastUpdate: string;
   signal: number;
+  deviceName?: string;
+  storeCode?: string;
+  lastHeartbeat?: string;
+  battery?: number;
+  signalStrength?: number;
+  isRealtime?: boolean;
+  isNew?: boolean;
+  macAddress?: string;
 }
 
 interface DeviceStatusTableProps {
   data: DeviceStatusData[];
   requestSort: (key: keyof DeviceStatusData) => void;
   sortConfig: { key: keyof DeviceStatusData; direction: 'ascending' | 'descending' } | null;
+  isRealtimeEnabled?: boolean;
 }
 
-export default function DeviceStatusTable({ data, requestSort, sortConfig }: DeviceStatusTableProps) {
+export default function DeviceStatusTable({ data, requestSort, sortConfig, isRealtimeEnabled = false }: DeviceStatusTableProps) {
   const [filters, setFilters] = useState({
     deviceId: '',
     deviceType: '',
     storeName: '',
-    status: ''
+    status: '',
+    macAddress: ''
   });
 
   const [filteredData, setFilteredData] = useState(data);
@@ -165,11 +251,16 @@ export default function DeviceStatusTable({ data, requestSort, sortConfig }: Dev
       return (
         (filters.deviceId === '' || item.deviceId.toLowerCase().includes(filters.deviceId.toLowerCase())) &&
         (filters.deviceType === '' || item.deviceType === filters.deviceType) &&
-        (filters.storeName === '' || item.storeName.toLowerCase().includes(filters.storeName.toLowerCase())) &&
-        (filters.status === '' || item.status === filters.status)
+        (filters.storeName === '' || item.storeName === filters.storeName) &&
+        (filters.status === '' || item.status === filters.status) &&
+        (filters.macAddress === '' || (item.macAddress && item.macAddress.toLowerCase().includes(filters.macAddress.toLowerCase())))
       );
     });
-    setFilteredData(filtered);
+    // 중복 제거
+    const uniqueFiltered = Array.from(
+      new Map(filtered.map(item => [item.deviceId, item])).values()
+    );
+    setFilteredData(uniqueFiltered);
   };
 
   const handleReset = () => {
@@ -177,13 +268,22 @@ export default function DeviceStatusTable({ data, requestSort, sortConfig }: Dev
       deviceId: '',
       deviceType: '',
       storeName: '',
-      status: ''
+      status: '',
+      macAddress: ''
     });
-    setFilteredData(data);
+    // 중복 제거
+    const uniqueData = Array.from(
+      new Map(data.map(item => [item.deviceId, item])).values()
+    );
+    setFilteredData(uniqueData);
   };
 
   React.useEffect(() => {
-    setFilteredData(data);
+    // 중복 제거: deviceId가 같은 항목이 여러 개 있을 경우 첫 번째 것만 사용
+    const uniqueData = Array.from(
+      new Map(data.map(item => [item.deviceId, item])).values()
+    );
+    setFilteredData(uniqueData);
   }, [data]);
   
   const getSortIcon = (key: keyof DeviceStatusData) => {
@@ -219,8 +319,8 @@ export default function DeviceStatusTable({ data, requestSort, sortConfig }: Dev
                     onChange={(e) => handleFilterChange('deviceType', e.target.value)}
                   >
                     <option value="">All</option>
-                    {[...new Set(data.map(item => item.deviceType))].map(type => (
-                      <option key={type} value={type}>{type}</option>
+                    {[...new Set(data.map(item => item.deviceType).filter(type => type && type.trim()))].map((type, index) => (
+                      <option key={`deviceType-${type}-${index}`} value={type}>{type}</option>
                     ))}
                   </FilterSelect>
                 </div>
@@ -228,11 +328,27 @@ export default function DeviceStatusTable({ data, requestSort, sortConfig }: Dev
             <Th>
                 <div className="header-content" onClick={() => requestSort('storeName')}>Store Name <SortIcon>{getSortIcon('storeName')}</SortIcon></div>
                 <div onClick={(e) => e.stopPropagation()}>
-                  <FilterInput 
-                    placeholder="Search..." 
+                  <FilterSelect 
                     value={filters.storeName}
                     onChange={(e) => handleFilterChange('storeName', e.target.value)}
-                  />
+                  >
+                    <option value="">All</option>
+                    {(() => {
+                      const uniqueStoreNames = [...new Set(data.map(item => item.storeName).filter(name => name && name.trim()))];
+                      const groupedStores = groupStoreNames(uniqueStoreNames);
+                      const sortedGroups = Object.keys(groupedStores).sort();
+                      
+                      return sortedGroups.map(group => (
+                        <optgroup key={group} label={group}>
+                          {groupedStores[group].map((storeName, index) => (
+                            <option key={`${group}-${storeName}-${index}`} value={storeName}>
+                              {storeName}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ));
+                    })()}
+                  </FilterSelect>
                 </div>
             </Th>
             <Th>
@@ -246,7 +362,18 @@ export default function DeviceStatusTable({ data, requestSort, sortConfig }: Dev
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                     <option value="maintenance">Maintenance</option>
+                    <option value="ready">Ready</option>
                   </FilterSelect>
+                </div>
+            </Th>
+            <Th>
+                <div className="header-content" onClick={() => requestSort('macAddress')}>MAC Address <SortIcon>{getSortIcon('macAddress')}</SortIcon></div>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <FilterInput 
+                    placeholder="Search..." 
+                    value={filters.macAddress}
+                    onChange={(e) => handleFilterChange('macAddress', e.target.value)}
+                  />
                 </div>
             </Th>
             <Th>
@@ -267,23 +394,37 @@ export default function DeviceStatusTable({ data, requestSort, sortConfig }: Dev
           </tr>
         </thead>
         <tbody>
-          {filteredData.map((row, index) => (
-            <tr key={index}>
+          {filteredData.map((row, index) => {
+            // 첫 번째 행의 데이터 확인
+            if (index === 0) {
+              console.log('First row data:', row);
+              console.log('MAC Address:', row.macAddress);
+            }
+            return (
+            <TableRow key={row.deviceId} $isNew={row.isNew}>
               <Td>{row.deviceId}</Td>
               <Td>{row.deviceType}</Td>
               <Td>{row.storeName}</Td>
               <Td>
-                <StatusBadge $status={row.status as string}>{row.status}</StatusBadge>
+                <StatusBadge $status={row.status as string}>
+                  {row.status === 'active' && 'active'}
+                  {row.status === 'inactive' && 'inactive'}
+                  {row.status === 'maintenance' && 'maintenance'}
+                  {row.status === 'ready' && 'ready'}
+                  {row.status === 'error' && 'error'}
+                </StatusBadge>
               </Td>
-              <Td>{row.lastUpdate}</Td>
+              <Td>{row.macAddress || 'N/A'}</Td>
+              <Td>{formatDateTime(row.lastUpdate)}</Td>
               <CenterTd>{row.signal}%</CenterTd>
               <Td>
                 <Link href={`/device-status/detail/${row.deviceId}?store=${encodeURIComponent(row.storeName)}`} passHref>
                   <ActionButton>🔍</ActionButton>
                 </Link>
               </Td>
-            </tr>
-          ))}
+            </TableRow>
+            );
+          })}
         </tbody>
       </StyledTable>
     </TableContainer>

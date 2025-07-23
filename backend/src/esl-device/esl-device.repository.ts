@@ -7,10 +7,7 @@ export class EslDeviceRepository {
 
   constructor(private mysqlProvider: MysqlProvider) {}
 
-  async updateDeviceStatus(
-    deviceId: string,
-    status: string,
-  ): Promise<boolean> {
+  async updateDeviceStatus(deviceId: string, status: string): Promise<boolean> {
     try {
       const query = `UPDATE esl_devices SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
       const params = [status, deviceId];
@@ -88,9 +85,11 @@ export class EslDeviceRepository {
 
     try {
       // CASE WHEN\uc744 \uc0ac\uc6a9\ud558\uc5ec \ud55c \ubc88\uc758 \ucffc\ub9ac\ub85c \uc5ec\ub7ec \ub514\ubc14\uc774\uc2a4 \uc5c5\ub370\uc774\ud2b8
-      const cases = deviceIds.map(id => `WHEN id = '${id}' THEN CURRENT_TIMESTAMP`).join(' ');
-      const ids = deviceIds.map(id => `'${id}'`).join(',');
-      
+      const cases = deviceIds
+        .map((id) => `WHEN id = '${id}' THEN CURRENT_TIMESTAMP`)
+        .join(' ');
+      const ids = deviceIds.map((id) => `'${id}'`).join(',');
+
       const query = `
         UPDATE esl_devices 
         SET last_heartbeat = CASE ${cases} ELSE last_heartbeat END,
@@ -155,4 +154,3 @@ export class EslDeviceRepository {
     }
   }
 }
-

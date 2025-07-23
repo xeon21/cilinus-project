@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend WebSocket Test</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1, h2 {
+            color: #333;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .log-container {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #ddd;
+        }
+        
+        .log-entry.received {
+            border-left-color: #28a745;
+            background-color: #f1f8f4;
+        }
+        
+        .log-entry.sent {
+            border-left-color: #007bff;
+            background-color: #e7f3ff;
+        }
+        
+        .log-entry.error {
+            border-left-color: #dc3545;
+            background-color: #fde7e9;
+        }
+        
+        .log-entry.system {
+            border-left-color: #ffc107;
+            background-color: #fff8e1;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        .device-list {
+            margin: 10px 0;
+        }
+        
+        .device-item {
+            padding: 8px;
+            margin: 5px 0;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .timestamp {
+            color: #666;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Frontend WebSocket Test Client</h1>
+    
+    <div class="container">
+        <div class="section">
+            <h2>Connection</h2>
+            <div id="status" class="status disconnected">Disconnected</div>
+            
+            <div>
+                <label>Server URL:</label>
+                <input type="text" id="serverUrl" placeholder="http://localhost:3002" value="http://localhost:3002">
+            </div>
+            
+            <div>
+                <label>JWT Token (optional):</label>
+                <input type="text" id="jwtToken" placeholder="Bearer eyJhbGciOiJ...">
+            </div>
+            
+            <button id="connectBtn" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+            
+            <h3>Device Subscription</h3>
+            <div>
+                <label>Device IDs (comma separated, leave empty for all):</label>
+                <input type="text" id="deviceIds" placeholder="device1,device2,device3">
+            </div>
+            <button id="subscribeBtn" onclick="subscribeDevices()" disabled>Subscribe</button>
+            <button id="unsubscribeBtn" onclick="unsubscribeDevices()" disabled>Unsubscribe</button>
+            
+            <div class="device-list">
+                <h4>Subscribed Devices:</h4>
+                <div id="subscribedDevices">None</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Device Events Monitor</h2>
+            <div class="log-container" id="eventLog"></div>
+            <button onclick="clearLogs()">Clear Logs</button>
+            
+            <h3>Broadcast Message</h3>
+            <div>
+                <label>Event Name:</label>
+                <input type="text" id="broadcastEvent" placeholder="broadcast-message" value="broadcast-message">
+            </div>
+            <div>
+                <label>Message:</label>
+                <input type="text" id="broadcastMessage" placeholder="Enter message to broadcast">
+            </div>
+            <div>
+                <label>Target Device IDs (optional, comma separated):</label>
+                <input type="text" id="broadcastDeviceIds" placeholder="device1,device2">
+            </div>
+            <button id="broadcastBtn" onclick="sendBroadcast()" disabled>Send Broadcast</button>
+        </div>
+    </div>
+    
+    <script>
+        let socket;
+        let isConnected = false;
+        let subscribedDeviceList = [];
+        
+        function updateStatus(connected) {
+            isConnected = connected;
+            const statusEl = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const subscribeBtn = document.getElementById('subscribeBtn');
+            const unsubscribeBtn = document.getElementById('unsubscribeBtn');
+            const broadcastBtn = document.getElementById('broadcastBtn');
+            
+            if (connected) {
+                statusEl.textContent = 'Connected';
+                statusEl.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                subscribeBtn.disabled = false;
+                unsubscribeBtn.disabled = false;
+                broadcastBtn.disabled = false;
+            } else {
+                statusEl.textContent = 'Disconnected';
+                statusEl.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                subscribeBtn.disabled = true;
+                unsubscribeBtn.disabled = true;
+                broadcastBtn.disabled = true;
+            }
+        }
+        
+        function addLog(message, type = 'received') {
+            const logContainer = document.getElementById('eventLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `
+                <span class="timestamp">[${timestamp}]</span>
+                <span>${message}</span>
+            `;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function connect() {
+            const token = document.getElementById('jwtToken').value;
+            const serverUrl = document.getElementById('serverUrl').value || 'http://localhost:3000';
+            
+            const options = {
+                transports: ['websocket', 'polling'],
+                path: '/socket.io/'
+            };
+            
+            if (token) {
+                options.auth = { token: token };
+            }
+            
+            socket = io(`${serverUrl}/frontend`, options);
+            
+            // Connection events
+            socket.on('connect', () => {
+                addLog('Connected to frontend websocket', 'system');
+                updateStatus(true);
+            });
+            
+            socket.on('connected', (data) => {
+                addLog(`Server response: ${JSON.stringify(data)}`, 'system');
+            });
+            
+            socket.on('disconnect', () => {
+                addLog('Disconnected from server', 'error');
+                updateStatus(false);
+            });
+            
+            socket.on('error', (error) => {
+                addLog(`Error: ${JSON.stringify(error)}`, 'error');
+            });
+            
+            // Device events
+            socket.on('device-status-changed', (data) => {
+                addLog(`Device Status Changed: ${JSON.stringify(data, null, 2)}`, 'received');
+            });
+            
+            socket.on('device-heartbeat-received', (data) => {
+                addLog(`Device Heartbeat: ${JSON.stringify(data, null, 2)}`, 'received');
+            });
+            
+            socket.on('device-failure', (data) => {
+                addLog(`Device Failure: ${JSON.stringify(data, null, 2)}`, 'error');
+            });
+            
+            socket.on('system-message', (data) => {
+                addLog(`System Message: ${JSON.stringify(data, null, 2)}`, 'system');
+            });
+            
+            socket.on('emergency-alert', (data) => {
+                addLog(`EMERGENCY ALERT: ${JSON.stringify(data, null, 2)}`, 'error');
+            });
+            
+            socket.on('bulk-update-chunk', (data) => {
+                addLog(`Bulk Update (Chunk ${data.chunkIndex + 1}/${data.totalChunks}): ${data.chunkSize} items`, 'received');
+            });
+        }
+        
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+        }
+        
+        function subscribeDevices() {
+            if (!socket || !isConnected) return;
+            
+            const deviceIdsInput = document.getElementById('deviceIds').value;
+            const deviceIds = deviceIdsInput ? deviceIdsInput.split(',').map(id => id.trim()) : [];
+            
+            socket.emit('subscribe-device-events', { deviceIds }, (response) => {
+                addLog(`Subscribe response: ${JSON.stringify(response)}`, 'sent');
+                if (response && response.success) {
+                    subscribedDeviceList = deviceIds.length > 0 ? deviceIds : ['all-devices'];
+                    updateSubscribedDevices();
+                }
+            });
+            
+            addLog(`Subscribing to devices: ${deviceIds.length > 0 ? deviceIds.join(', ') : 'all devices'}`, 'sent');
+        }
+        
+        function unsubscribeDevices() {
+            if (!socket || !isConnected) return;
+            
+            const deviceIdsInput = document.getElementById('deviceIds').value;
+            const deviceIds = deviceIdsInput ? deviceIdsInput.split(',').map(id => id.trim()) : [];
+            
+            socket.emit('unsubscribe-device-events', { deviceIds }, (response) => {
+                addLog(`Unsubscribe response: ${JSON.stringify(response)}`, 'sent');
+                if (response && response.success) {
+                    subscribedDeviceList = [];
+                    updateSubscribedDevices();
+                }
+            });
+            
+            addLog(`Unsubscribing from devices: ${deviceIds.length > 0 ? deviceIds.join(', ') : 'all devices'}`, 'sent');
+        }
+        
+        function updateSubscribedDevices() {
+            const container = document.getElementById('subscribedDevices');
+            if (subscribedDeviceList.length === 0) {
+                container.textContent = 'None';
+            } else {
+                container.innerHTML = subscribedDeviceList
+                    .map(device => `<div class="device-item">${device}</div>`)
+                    .join('');
+            }
+        }
+        
+        function clearLogs() {
+            document.getElementById('eventLog').innerHTML = '';
+        }
+        
+        function sendBroadcast() {
+            if (!socket || !isConnected) return;
+            
+            const eventName = document.getElementById('broadcastEvent').value || 'broadcast-message';
+            const message = document.getElementById('broadcastMessage').value;
+            const deviceIdsInput = document.getElementById('broadcastDeviceIds').value;
+            const deviceIds = deviceIdsInput ? deviceIdsInput.split(',').map(id => id.trim()) : [];
+            
+            const broadcastData = {
+                message: message,
+                timestamp: new Date().toISOString(),
+                sender: 'frontend-test-client'
+            };
+            
+            if (deviceIds.length > 0) {
+                broadcastData.targetDevices = deviceIds;
+            }
+            
+            socket.emit(eventName, broadcastData, (response) => {
+                addLog(`Broadcast response: ${JSON.stringify(response)}`, 'sent');
+            });
+            
+            addLog(`Broadcasting message - Event: ${eventName}, Data: ${JSON.stringify(broadcastData)}`, 'sent');
+        }
+        
+        // Initial setup
+        updateStatus(false);
+    </script>
+</body>
+</html>

@@ -21,6 +21,13 @@ export class DeviceStatusDto {
 
   @ApiProperty({ example: 92, description: 'Signal strength percentage' })
   signal: number;
+
+  @ApiProperty({
+    example: 'AA:BB:CC:DD:EE:FF',
+    description: 'Device MAC address',
+    required: false,
+  })
+  macAddress?: string;
 }
 
 export class DeviceDetailDto extends DeviceStatusDto {
@@ -52,7 +59,7 @@ export class DeviceDetailDto extends DeviceStatusDto {
     example: 'AA:BB:CC:DD:EE:FF',
     description: 'Device MAC address',
   })
-  macAddress: string;
+  declare macAddress: string;
 }
 
 export class PriceTagDetailDto {

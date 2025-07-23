@@ -185,10 +185,15 @@
                 log(`📦 Bulk Update Chunk ${data.chunkIndex + 1}/${data.totalChunks} (${data.chunkSize} items)`, 'received');
             });
 
+            // Frontend broadcast 메시지 수신
+            socket.on('frontend-broadcast', (data) => {
+                log(`🎯 Frontend Broadcast Received: ${JSON.stringify(data, null, 2)}`, 'received');
+            });
+
             // 커스텀 이벤트 리스너 (매장별 브로드캐스트용)
             socket.onAny((eventName, data) => {
                 if (!['connected', 'registered', 'heartbeat-ack', 'unregistered', 'device-failure', 
-                      'system-message', 'device-status-changed', 'emergency-alert', 'bulk-update-chunk'].includes(eventName)) {
+                      'system-message', 'device-status-changed', 'emergency-alert', 'bulk-update-chunk', 'frontend-broadcast'].includes(eventName)) {
                     log(`📨 Custom Event [${eventName}]: ${JSON.stringify(data)}`, 'received');
                 }
             });
