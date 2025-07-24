@@ -94,7 +94,7 @@ export default function DonutChartCard({ title, updatedAt, usage, total, unit, c
           </PieChart>
         </ResponsiveContainer>
         <CenterLabel>
-          <div className="percentage">{`${usage}%`}</div>
+          <div className="percentage">{`${Math.ceil(usage)}%`}</div>
           <div className="usage">{`${used.toFixed(1)} / ${total} ${unit}`}</div>
         </CenterLabel>
       </ChartWrapper>

@@ -51,13 +51,16 @@ export default function StatusHistoryChart({ history }: { history: ResourceLog[]
   const brushRangeRef = useRef<{ minutesFromEnd?: number; duration?: number }>({});
   const isInitializedRef = useRef(false);
 
+  // 총 디스크 용량 (1TB = 1024GB)
+  const totalDiskGB = 1024;
+
   // 중복 제거 및 시간순 정렬
   const uniqueTimestamps = new Set<number>();
   const data = history
     .map(log => ({
       time: new Date(log.timestamp).getTime(),
       memory: log.memory,
-      disk: log.disk
+      disk: (log.disk / totalDiskGB) * 100 // GB를 퍼센트로 변환
     }))
     .filter(item => {
       if (uniqueTimestamps.has(item.time)) {
@@ -140,14 +143,16 @@ export default function StatusHistoryChart({ history }: { history: ResourceLog[]
             orientation="left" 
             stroke="#e74c3c" 
             fontSize={12}
-           domain={[(dataMin: number) => (Math.floor(dataMin)), (dataMax: number) => (Math.ceil(dataMax))]}
+            domain={[0, 100]}
+            ticks={[0, 20, 40, 60, 80, 100]}
            />
           <YAxis 
             yAxisId="right" 
             orientation="right" 
             stroke="#2ecc71" 
             fontSize={12}
-            domain={[(dataMin: number) => (Math.floor(dataMin)), (dataMax: number) => (Math.ceil(dataMax))]}
+            domain={[0, 100]}
+            ticks={[0, 20, 40, 60, 80, 100]}
             />
           <Tooltip
             labelFormatter={timeFormatter}

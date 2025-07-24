@@ -114,3 +114,31 @@ export class PriceTagDetailDto {
   })
   tagCategory: string;
 }
+
+export class DeviceStatusStatisticsDto {
+  @ApiProperty({ description: '디바이스 상태', example: 'online' })
+  status: string;
+
+  @ApiProperty({ description: '해당 상태의 디바이스 수', example: 25 })
+  count: number;
+
+  @ApiProperty({ description: '전체 대비 비율', example: 50.0 })
+  percentage: number;
+}
+
+export class DeviceStatusSummaryDto {
+  @ApiProperty({ description: '전체 디바이스 수', example: 50 })
+  total: number;
+
+  @ApiProperty({ 
+    description: '상태별 디바이스 통계',
+    type: [DeviceStatusStatisticsDto]
+  })
+  statusBreakdown: DeviceStatusStatisticsDto[];
+
+  @ApiProperty({ 
+    description: '데이터 조회 시각',
+    example: '2025-01-24T10:30:00Z'
+  })
+  timestamp: string;
+}

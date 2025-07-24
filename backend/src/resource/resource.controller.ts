@@ -4,6 +4,7 @@ import { Controller, Get, Logger } from '@nestjs/common';
 import { ResourceService } from './resource.service';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { ResourceLogDto } from '../dto/resource.dto';
+import { DeviceStatusSummaryDto } from '../dto/device-status.dto';
 
 @ApiTags('Resource')
 @Controller('resource')
@@ -34,5 +35,27 @@ export class ResourceController {
     );
 
     return resourceHistory;
+  }
+
+  @Get('device-status')
+  @ApiOperation({
+    summary: 'ESL 디바이스 상태 통계 조회',
+    description:
+      'ESL 디바이스의 상태별 통계 정보를 조회합니다 (online, offline, warning, error).',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '디바이스 상태 통계 조회 성공',
+    type: DeviceStatusSummaryDto,
+  })
+  @ApiResponse({ status: 500, description: '서버 내부 오류' })
+  async getDeviceStatus() {
+    this.logger.log('GET /resource/device-status - 디바이스 상태 통계 조회 요청');
+
+    const deviceStatus = await this.resourceService.getDeviceStatusSummary();
+
+    this.logger.log(`받은 데이터: ${JSON.stringify(deviceStatus)}`);
+
+    return deviceStatus;
   }
 }

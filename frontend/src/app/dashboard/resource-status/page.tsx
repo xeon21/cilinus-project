@@ -10,6 +10,7 @@ import DonutChartCard from './DonutChartCard';
 import StatusHistoryChart from './StatusHistoryChart';
 import InformationCard from './InformationCard';
 import AlarmHistoryCard from './AlarmHistoryCard';
+import DeviceStatusBarChart from './DeviceStatusBarChart';
 import { ResourceLog } from './StatusHistoryChart'; // StatusHistoryChart에서 타입 export 필요
 
 const PageTitle = styled.h1`
@@ -21,19 +22,28 @@ const PageTitle = styled.h1`
 
 export default function ResourceStatusPage() {
     const [history, setHistory] = useState<ResourceLog[]>([]);
+    const [deviceStatus, setDeviceStatus] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // [수정] 백엔드 API 호출
-                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/resource/history`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch resource history');
+                // 백엔드 API 호출 - 리소스 히스토리와 디바이스 상태를 병렬로 조회
+                const [historyResponse, deviceResponse] = await Promise.all([
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/resource/history`),
+                    fetch(`${process.env.NEXT_PUBLIC_API_URL}/resource/device-status`)
+                ]);
+                
+                if (!historyResponse.ok || !deviceResponse.ok) {
+                    throw new Error('Failed to fetch data');
                 }
-                const data: ResourceLog[] = await response.json();
-                setHistory(data);
+                
+                const historyData: ResourceLog[] = await historyResponse.json();
+                const deviceData = await deviceResponse.json();
+                
+                setHistory(historyData);
+                setDeviceStatus(deviceData);
             } catch (err: any) {
                 setError(err.message);
             } finally {
@@ -49,6 +59,10 @@ export default function ResourceStatusPage() {
     }, []);
 
     const latestData = history.length > 0 ? history[history.length - 1] : null;
+    
+    // 실제 메모리 및 스토리지 총 용량 계산 (GB 단위)
+    const totalMemoryGB = 16; // 실제 서버의 총 메모리 용량으로 변경 필요
+    const totalStorageGB = 1024; // 1TB = 1024GB
 
     if (loading) return <DashboardLayout><PageTitle>Loading...</PageTitle></DashboardLayout>;
     if (error) return <DashboardLayout><PageTitle>Error: {error}</PageTitle></DashboardLayout>;
@@ -61,35 +75,28 @@ export default function ResourceStatusPage() {
                 {/* 왼쪽 컬럼 */}
                 <GridItem $lg={8}>
                     <GridContainer $gap="1.5rem">
-                        <GridItem $lg={4} $xs={12}>
+                        <GridItem $lg={6} $xs={12}>
                             <DonutChartCard
-                                title="Recent Status"
+                                title="Ram Usage"
                                 updatedAt={latestData ? new Date(latestData.timestamp).toLocaleTimeString() : 'N/A'}
                                 usage={latestData ? Math.round(latestData.memory) : 0}
-                                total={7.63}
+                                total={totalMemoryGB}
                                 unit="GB"
                                 color="#e74c3c"
                             />
                         </GridItem>
-                        <GridItem $lg={4} $xs={12}>
+                        <GridItem $lg={6} $xs={12}>
                             <DonutChartCard
-                                title="Recent Status"
+                                title="Storage Usage"
                                 updatedAt={latestData ? new Date(latestData.timestamp).toLocaleTimeString() : 'N/A'}
-                                usage={latestData ? Math.round(latestData.disk) : 0}
-                                total={49.93}
+                                usage={latestData ? (latestData.disk / totalStorageGB) * 100 : 0}
+                                total={totalStorageGB}
                                 unit="GB"
                                 color="#2ecc71"
                             />
                         </GridItem>
-                        <GridItem $lg={4} $xs={12}>
-                            <DonutChartCard
-                                title="Device Status"
-                                updatedAt={latestData ? new Date(latestData.timestamp).toLocaleTimeString() : 'N/A'}
-                                usage={latestData ? Math.round(latestData.disk) : 0}
-                                total={49.93}
-                                unit="GB"
-                                color="#2ecc71"
-                            />
+                        <GridItem $lg={12} $xs={12}>
+                            <DeviceStatusBarChart data={deviceStatus} />
                         </GridItem>
                         <GridItem $lg={12} $xs={12}>
                             {/* [수정] history 데이터를 props로 전달 */}
