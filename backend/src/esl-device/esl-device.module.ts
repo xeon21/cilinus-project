@@ -7,7 +7,7 @@ import { EslDeviceRepository } from './esl-device.repository';
 import { EmailModule } from '../email/email.module';
 import { MysqlProvider } from '../database/mysql.provider';
 import { FrontendWebSocketModule } from '../frontend-websocket/frontend-websocket.module';
-
+// ESL 디바이스 모듈
 @Module({
   imports: [
     ScheduleModule.forRoot(),
