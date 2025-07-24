@@ -61,7 +61,7 @@ export default function ResourceStatusPage() {
                 {/* 왼쪽 컬럼 */}
                 <GridItem $lg={8}>
                     <GridContainer $gap="1.5rem">
-                        <GridItem $lg={6} $xs={12}>
+                        <GridItem $lg={4} $xs={12}>
                             <DonutChartCard
                                 title="Recent Status"
                                 updatedAt={latestData ? new Date(latestData.timestamp).toLocaleTimeString() : 'N/A'}
@@ -71,9 +71,19 @@ export default function ResourceStatusPage() {
                                 color="#e74c3c"
                             />
                         </GridItem>
-                        <GridItem $lg={6} $xs={12}>
+                        <GridItem $lg={4} $xs={12}>
                             <DonutChartCard
                                 title="Recent Status"
+                                updatedAt={latestData ? new Date(latestData.timestamp).toLocaleTimeString() : 'N/A'}
+                                usage={latestData ? Math.round(latestData.disk) : 0}
+                                total={49.93}
+                                unit="GB"
+                                color="#2ecc71"
+                            />
+                        </GridItem>
+                        <GridItem $lg={4} $xs={12}>
+                            <DonutChartCard
+                                title="Device Status"
                                 updatedAt={latestData ? new Date(latestData.timestamp).toLocaleTimeString() : 'N/A'}
                                 usage={latestData ? Math.round(latestData.disk) : 0}
                                 total={49.93}
@@ -85,6 +95,7 @@ export default function ResourceStatusPage() {
                             {/* [수정] history 데이터를 props로 전달 */}
                             <StatusHistoryChart history={history} />
                         </GridItem>
+                        
                     </GridContainer>
                 </GridItem>
 

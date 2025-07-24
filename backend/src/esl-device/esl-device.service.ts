@@ -131,16 +131,17 @@ export class EslDeviceService {
         return false;
       }
 
+      // 소켓 ID가 변경된 경우 업데이트 (재연결 감지)
       if (device.socketId !== socketId) {
-        this.logger.warn(
-          `Heartbeat update failed - Socket mismatch for device ${deviceId}. Expected: ${device.socketId}, Got: ${socketId}`,
+        this.logger.log(
+          `Device socket ID updated - DeviceId: ${deviceId}, Old: ${device.socketId}, New: ${socketId}`,
         );
-        return false;
       }
 
       // 새로운 객체를 생성하여 Map을 업데이트 (버전 증가로 동시성 제어)
       const updatedDevice: DeviceInfo = {
         ...device,
+        socketId: socketId, // 새로운 소켓 ID로 업데이트
         lastHeartbeat: new Date(),
         isAlive: true,
         version: (device.version || 0) + 1,

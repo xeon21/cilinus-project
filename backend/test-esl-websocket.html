@@ -107,6 +107,9 @@
         let socket = null;
         let heartbeatInterval = null;
         let isConnected = false;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+        let reconnectInterval = null;
 
         function log(message, type = 'info') {
             const logElement = document.getElementById('log');
@@ -198,11 +201,16 @@
                 }
             });
 
-            socket.on('disconnect', () => {
-                log('Disconnected from server', 'error');
+            socket.on('disconnect', (reason) => {
+                log(`Disconnected from server: ${reason}`, 'error');
                 updateConnectionStatus('Disconnected');
                 document.getElementById('socketId').textContent = '-';
                 document.getElementById('deviceIdDisplay').textContent = '-';
+                
+                // 자동 재연결 시도
+                if (reason !== 'io client disconnect' && reconnectAttempts < maxReconnectAttempts) {
+                    attemptReconnect();
+                }
             });
 
             socket.on('error', (error) => {
@@ -298,6 +306,25 @@
                     heartbeatInterval = null;
                 }
             }
+        }
+
+        function attemptReconnect() {
+            reconnectAttempts++;
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000); // Exponential backoff
+            
+            log(`Attempting reconnection ${reconnectAttempts}/${maxReconnectAttempts} in ${delay/1000}s...`, 'info');
+            
+            reconnectInterval = setTimeout(() => {
+                if (!socket || !socket.connected) {
+                    connect();
+                    // 재연결 후 자동으로 register
+                    socket.once('connect', () => {
+                        log('Reconnected successfully', 'received');
+                        reconnectAttempts = 0;
+                        register();
+                    });
+                }
+            }, delay);
         }
 
         // Initial log

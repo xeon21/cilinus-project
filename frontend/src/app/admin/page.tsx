@@ -119,7 +119,7 @@ const ActionButton = styled.button`
 
 export default function AdminPage() {
   const router = useRouter();
-  const { isAuthenticated, hasRole } = useAuthStore();
+  const { isAuthenticated, hasPermission } = useAuthStore();
   const [users, setUsers] = useState<UserDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -166,13 +166,13 @@ export default function AdminPage() {
       router.push('/login');
       return;
     }
-    if (!hasRole('admin')) {
+    if (!hasPermission('user.create')) {
       alert('접근 권한이 없습니다.');
       router.push('/dashboard');
       return;
     }
     fetchUsers();
-  }, [isAuthenticated, hasRole, router, fetchUsers]);
+  }, [isAuthenticated, hasPermission, router, fetchUsers]);
 
   // Role Change Handlers
   const handleOpenRoleModal = (user: UserDto) => {

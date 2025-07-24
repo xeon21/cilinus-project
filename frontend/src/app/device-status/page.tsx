@@ -22,6 +22,14 @@ export default function DeviceStatusPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [knownDeviceIds, setKnownDeviceIds] = useState<Set<string>>(new Set());
+  const [filters, setFilters] = useState({
+    deviceId: '',
+    deviceType: '',
+    storeName: '',
+    status: '',
+    macAddress: ''
+  });
+  const [isFiltered, setIsFiltered] = useState(false);
   
   // WebSocket Hook 사용
   const { devices, isConnected, connectionStatus, wsUrl, error: wsError } = useDeviceWebSocket();
@@ -117,7 +125,22 @@ export default function DeviceStatusPage() {
     return Array.from(deviceMap.values());
   }, [initialData, devices, knownDeviceIds]);
 
-  const { sortedData, requestSort, sortConfig } = useSort<DeviceStatusData>(mergedData, 'deviceId', 'ascending');
+  // 필터링 로직
+  const filteredData = useMemo(() => {
+    if (!isFiltered) return mergedData;
+    
+    return mergedData.filter(item => {
+      return (
+        (filters.deviceId === '' || item.deviceId.toLowerCase().includes(filters.deviceId.toLowerCase())) &&
+        (filters.deviceType === '' || item.deviceType === filters.deviceType) &&
+        (filters.storeName === '' || item.storeName === filters.storeName) &&
+        (filters.status === '' || item.status === filters.status) &&
+        (filters.macAddress === '' || (item.macAddress && item.macAddress.toLowerCase().includes(filters.macAddress.toLowerCase())))
+      );
+    });
+  }, [mergedData, filters, isFiltered]);
+
+  const { sortedData, requestSort, sortConfig } = useSort<DeviceStatusData>(filteredData, 'deviceId', 'ascending');
   
   return (
     <DashboardLayout $bgColor="#e9eef2" $padding="2rem">
@@ -143,6 +166,11 @@ export default function DeviceStatusPage() {
           requestSort={requestSort}
           sortConfig={sortConfig}
           isRealtimeEnabled={isConnected}
+          filters={filters}
+          setFilters={setFilters}
+          isFiltered={isFiltered}
+          setIsFiltered={setIsFiltered}
+          allData={mergedData}
         />
       )}
     </DashboardLayout>

@@ -77,6 +77,9 @@ export class EslDeviceGateway
     // 디바이스 연결 시 프론트엔드 웹소켓으로 이벤트 전달
     const deviceId = query.deviceId as string;
     if (deviceId) {
+      // client 데이터에 deviceId 저장
+      client.data.deviceId = deviceId;
+      
       const broadcastData = {
         deviceId,
         socketId: clientId,
@@ -101,7 +104,10 @@ export class EslDeviceGateway
     this.connectionCount--;
     const clientId = client.id;
     const query = client.handshake.query;
-    const deviceId = query.deviceId as string;
+    // query, client.data, 서비스에서 순차적으로 deviceId 찾기
+    const deviceId = (query.deviceId as string) || 
+                    client.data.deviceId || 
+                    this.eslDeviceService.getDeviceIdBySocketId(clientId);
 
     this.logger.log(
       `Client disconnected: ${clientId}, DeviceId: ${deviceId || 'N/A'} (Total: ${this.connectionCount})`,
@@ -110,7 +116,7 @@ export class EslDeviceGateway
     // handleDeviceDisconnect 호출 - 이 메서드가 디바이스를 찾아서 처리
     this.eslDeviceService.handleDeviceDisconnect(clientId);
 
-    // 디바이스 ID가 query에 있거나 서비스에서 찾을 수 있는 경우 프론트엔드에 전달
+    // 디바이스 ID를 찾았다면 프론트엔드에 전달
     if (deviceId) {
       const broadcastData = {
         deviceId: deviceId,
@@ -129,29 +135,6 @@ export class EslDeviceGateway
       this.logger.log(
         `Device disconnected event sent to frontend: ${JSON.stringify(broadcastData)}`,
       );
-    } else {
-      // deviceId가 query에 없는 경우, 서비스에서 찾아보기
-      const disconnectedDeviceId =
-        this.eslDeviceService.getDeviceIdBySocketId(clientId);
-      if (disconnectedDeviceId) {
-        const broadcastData = {
-          deviceId: disconnectedDeviceId,
-          socketId: clientId,
-          status: 'inactive',
-          timestamp: new Date().toISOString(),
-          eventType: 'device-disconnected',
-          reason: 'socket-disconnect',
-        };
-
-        this.eslDeviceService.notifyFrontend(
-          'device-status-changed',
-          broadcastData,
-        );
-
-        this.logger.log(
-          `Device disconnected event sent to frontend (found by socketId): ${JSON.stringify(broadcastData)}`,
-        );
-      }
     }
   }
 
@@ -182,7 +165,18 @@ export class EslDeviceGateway
 
     // 디바이스 등록 시 room에 join
     if (result) {
+      // 기존 room에서 나가고 새로운 room에 join (소켓 ID 변경 대비)
+      const rooms = Array.from(client.rooms);
+      rooms.forEach(room => {
+        if (room.startsWith('device:') && room !== `device:${deviceId}`) {
+          client.leave(room);
+        }
+      });
+      
       client.join(`device:${deviceId}`);
+      // 클라이언트 데이터에 deviceId 저장 (나중에 참조하기 위해)
+      client.data.deviceId = deviceId;
+      
       this.logger.log(`Device ${deviceId} joined room: device:${deviceId}`);
       
       const broadcastData = {

@@ -226,18 +226,36 @@ interface DeviceStatusTableProps {
   requestSort: (key: keyof DeviceStatusData) => void;
   sortConfig: { key: keyof DeviceStatusData; direction: 'ascending' | 'descending' } | null;
   isRealtimeEnabled?: boolean;
+  filters: {
+    deviceId: string;
+    deviceType: string;
+    storeName: string;
+    status: string;
+    macAddress: string;
+  };
+  setFilters: React.Dispatch<React.SetStateAction<{
+    deviceId: string;
+    deviceType: string;
+    storeName: string;
+    status: string;
+    macAddress: string;
+  }>>;
+  isFiltered: boolean;
+  setIsFiltered: React.Dispatch<React.SetStateAction<boolean>>;
+  allData: DeviceStatusData[];
 }
 
-export default function DeviceStatusTable({ data, requestSort, sortConfig, isRealtimeEnabled = false }: DeviceStatusTableProps) {
-  const [filters, setFilters] = useState({
-    deviceId: '',
-    deviceType: '',
-    storeName: '',
-    status: '',
-    macAddress: ''
-  });
-
-  const [filteredData, setFilteredData] = useState(data);
+export default function DeviceStatusTable({ 
+  data, 
+  requestSort, 
+  sortConfig, 
+  isRealtimeEnabled = false,
+  filters,
+  setFilters,
+  isFiltered,
+  setIsFiltered,
+  allData
+}: DeviceStatusTableProps) {
 
   const handleFilterChange = (field: keyof typeof filters, value: string) => {
     setFilters(prev => ({
@@ -247,20 +265,7 @@ export default function DeviceStatusTable({ data, requestSort, sortConfig, isRea
   };
 
   const handleSearch = () => {
-    const filtered = data.filter(item => {
-      return (
-        (filters.deviceId === '' || item.deviceId.toLowerCase().includes(filters.deviceId.toLowerCase())) &&
-        (filters.deviceType === '' || item.deviceType === filters.deviceType) &&
-        (filters.storeName === '' || item.storeName === filters.storeName) &&
-        (filters.status === '' || item.status === filters.status) &&
-        (filters.macAddress === '' || (item.macAddress && item.macAddress.toLowerCase().includes(filters.macAddress.toLowerCase())))
-      );
-    });
-    // 중복 제거
-    const uniqueFiltered = Array.from(
-      new Map(filtered.map(item => [item.deviceId, item])).values()
-    );
-    setFilteredData(uniqueFiltered);
+    setIsFiltered(true);
   };
 
   const handleReset = () => {
@@ -271,20 +276,9 @@ export default function DeviceStatusTable({ data, requestSort, sortConfig, isRea
       status: '',
       macAddress: ''
     });
-    // 중복 제거
-    const uniqueData = Array.from(
-      new Map(data.map(item => [item.deviceId, item])).values()
-    );
-    setFilteredData(uniqueData);
+    setIsFiltered(false);
   };
 
-  React.useEffect(() => {
-    // 중복 제거: deviceId가 같은 항목이 여러 개 있을 경우 첫 번째 것만 사용
-    const uniqueData = Array.from(
-      new Map(data.map(item => [item.deviceId, item])).values()
-    );
-    setFilteredData(uniqueData);
-  }, [data]);
   
   const getSortIcon = (key: keyof DeviceStatusData) => {
     if (!sortConfig || sortConfig.key !== key) {
@@ -319,7 +313,7 @@ export default function DeviceStatusTable({ data, requestSort, sortConfig, isRea
                     onChange={(e) => handleFilterChange('deviceType', e.target.value)}
                   >
                     <option value="">All</option>
-                    {[...new Set(data.map(item => item.deviceType).filter(type => type && type.trim()))].map((type, index) => (
+                    {[...new Set(allData.map(item => item.deviceType).filter(type => type && type.trim()))].map((type, index) => (
                       <option key={`deviceType-${type}-${index}`} value={type}>{type}</option>
                     ))}
                   </FilterSelect>
@@ -334,7 +328,7 @@ export default function DeviceStatusTable({ data, requestSort, sortConfig, isRea
                   >
                     <option value="">All</option>
                     {(() => {
-                      const uniqueStoreNames = [...new Set(data.map(item => item.storeName).filter(name => name && name.trim()))];
+                      const uniqueStoreNames = [...new Set(allData.map(item => item.storeName).filter(name => name && name.trim()))];
                       const groupedStores = groupStoreNames(uniqueStoreNames);
                       const sortedGroups = Object.keys(groupedStores).sort();
                       
@@ -394,13 +388,7 @@ export default function DeviceStatusTable({ data, requestSort, sortConfig, isRea
           </tr>
         </thead>
         <tbody>
-          {filteredData.map((row, index) => {
-            // 첫 번째 행의 데이터 확인
-            if (index === 0) {
-              console.log('First row data:', row);
-              console.log('MAC Address:', row.macAddress);
-            }
-            return (
+          {data.map((row) => (
             <TableRow key={row.deviceId} $isNew={row.isNew}>
               <Td>{row.deviceId}</Td>
               <Td>{row.deviceType}</Td>
@@ -423,8 +411,7 @@ export default function DeviceStatusTable({ data, requestSort, sortConfig, isRea
                 </Link>
               </Td>
             </TableRow>
-            );
-          })}
+          ))}
         </tbody>
       </StyledTable>
     </TableContainer>
